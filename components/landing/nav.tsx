@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useState, useEffect } from "react";
 import { T } from "./shared";
 
@@ -25,13 +24,11 @@ export function Nav() {
     }}>
       <div style={{ maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 68 }}>
         <div style={{ display: "flex", alignItems: "center" }}>
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/qbridge-logo.png"
             alt="QBridge logo"
-            width={156}
-            height={52}
-            priority
-            style={{ width: 156, height: "auto", mixBlendMode: "screen", filter: "drop-shadow(0 0 8px rgba(78,161,246,0.4))" }}
+            style={{ width: 180, height: "auto", mixBlendMode: "screen" }}
           />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 36 }}>

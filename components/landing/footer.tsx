@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { T } from "./shared";
 
 const links = ["Privacy Policy", "Terms of Use", "Contact"];
@@ -14,12 +13,11 @@ export function Footer() {
     }}>
       <div style={{ maxWidth: 1160, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/qbridge-logo.png"
             alt="QBridge logo"
-            width={128}
-            height={42}
-            style={{ width: 128, height: "auto", mixBlendMode: "screen" }}
+            style={{ width: 148, height: "auto", mixBlendMode: "screen" }}
           />
           <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: T.gold, fontFamily: "'DM Mono', monospace" }}>
             Institutional Infrastructure
