@@ -27,7 +27,7 @@ export function CTA() {
           </p>
           <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
             <button style={{
-              background: T.gold,
+              background: T.warm,
               color: T.navy,
               padding: "16px 40px",
               fontSize: 13,
@@ -57,8 +57,8 @@ export function CTA() {
           <div style={{ marginTop: 80, paddingTop: 48, borderTop: `1px solid ${T.border}`, display: "flex", justifyContent: "center", gap: 48, flexWrap: "wrap" }}>
             {badges.map(badge => (
               <div key={badge} style={{ textAlign: "center" }}>
-                <div style={{ width: 36, height: 36, border: `1px solid ${T.gold}`, margin: "0 auto 10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <div style={{ width: 12, height: 12, background: T.gold, opacity: 0.6 }} />
+                <div style={{ width: 36, height: 36, border: `1px solid ${T.warm}`, margin: "0 auto 10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 12, height: 12, background: T.warm, opacity: 0.6 }} />
                 </div>
                 <div style={{ fontSize: 11, color: T.muted, letterSpacing: "0.08em", fontFamily: "'DM Mono', monospace" }}>{badge}</div>
               </div>

@@ -12,6 +12,8 @@ export const T = {
   coldW:   "#F2F7FF",
   muted:   "#8FAACB",
   accent:  "#4EA1F6",
+  /** Warm yellow/gold accent for highlights (e.g. "Regulated Markets") */
+  warm:   "#E8B84C",
   border:  "rgba(78,161,246,0.12)",
 };
 

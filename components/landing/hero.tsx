@@ -48,7 +48,7 @@ export function Hero() {
             }}>
               Compliant Digital Asset<br />
               Infrastructure for{" "}
-              <span style={{ color: T.accent }}>Regulated Markets.</span>
+              <span style={{ color: T.warm }}>Regulated Markets.</span>
             </h1>
           </FadeIn>
           <FadeIn delay={200}>
@@ -61,8 +61,8 @@ export function Hero() {
           <FadeIn delay={300}>
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
               <a href="#contact" style={{
-                background: T.gold,
-                color: "#fff",
+                background: T.warm,
+                color: T.navy,
                 padding: "14px 32px",
                 fontSize: 13,
                 fontWeight: 700,

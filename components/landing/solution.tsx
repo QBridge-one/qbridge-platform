@@ -56,7 +56,7 @@ export function Solution() {
                   </div>
                 </div>
               ))}
-              <div style={{ position: "absolute", top: 16, right: 16, fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: T.gold, fontFamily: "'DM Mono', monospace", fontSize: 10 } as React.CSSProperties}>
+              <div style={{ position: "absolute", top: 16, right: 16, fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: T.gold, fontFamily: "'DM Mono', monospace" }}>
                 Protocol Stack
               </div>
             </div>

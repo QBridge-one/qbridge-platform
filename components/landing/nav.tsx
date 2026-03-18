@@ -41,8 +41,8 @@ export function Nav() {
           ))}
           <a href="#contact" style={{
             background: "transparent",
-            border: `1px solid ${T.gold}`,
-            color: T.gold,
+            border: `1px solid ${T.warm}`,
+            color: T.warm,
             padding: "8px 20px",
             fontSize: 12,
             fontWeight: 700,
@@ -52,8 +52,8 @@ export function Nav() {
             fontFamily: "'DM Mono', monospace",
             transition: "all 0.2s",
           }}
-            onMouseEnter={e => { e.currentTarget.style.background = T.gold; e.currentTarget.style.color = T.navy; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.gold; }}>
+            onMouseEnter={e => { e.currentTarget.style.background = T.warm; e.currentTarget.style.color = T.navy; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.warm; }}>
             Request Access
           </a>
         </div>
