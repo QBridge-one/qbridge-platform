@@ -1,9 +1,36 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://qbridge.one";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "QBridge — Compliant Digital Asset Infrastructure",
-  description: "Institutional-grade blockchain rails for real-world asset tokenization with compliance, identity controls, and auditability built into the protocol layer.",
+  description:
+    "Institutional-grade blockchain rails for real-world asset tokenization with compliance, identity controls, and auditability built into the protocol layer.",
+  openGraph: {
+    type: "website",
+    url: siteUrl,
+    siteName: "QBridge",
+    title: "QBridge — Compliant Digital Asset Infrastructure",
+    description:
+      "Institutional-grade blockchain rails for real-world asset tokenization with compliance, identity controls, and auditability built into the protocol layer.",
+    images: [
+      {
+        url: "/hero-bg.png",
+        width: 1200,
+        height: 630,
+        alt: "QBridge — Institutional digital asset infrastructure",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "QBridge — Compliant Digital Asset Infrastructure",
+    description:
+      "Institutional-grade blockchain rails for real-world asset tokenization with compliance, identity controls, and auditability built into the protocol layer.",
+    images: ["/hero-bg.png"],
+  },
 };
 
 export const viewport = {
