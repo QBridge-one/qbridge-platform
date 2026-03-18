@@ -6,6 +6,12 @@ export const metadata: Metadata = {
   description: "Institutional-grade blockchain rails for real-world asset tokenization with compliance, identity controls, and auditability built into the protocol layer.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

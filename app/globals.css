@@ -125,8 +125,13 @@
   }
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
+    width: 100%;
   }
   body {
     background: #080E1A;
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
   }
 }
