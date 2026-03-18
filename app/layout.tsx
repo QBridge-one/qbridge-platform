@@ -17,7 +17,7 @@ export const metadata: Metadata = {
       "Institutional-grade blockchain rails for real-world asset tokenization with compliance, identity controls, and auditability built into the protocol layer.",
     images: [
       {
-        url: "/og-image.png",
+        url: `${siteUrl}/og-image.png`,
         width: 1200,
         height: 630,
         alt: "QBridge — Institutional digital asset infrastructure",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     title: "QBridge — Compliant Digital Asset Infrastructure",
     description:
       "Institutional-grade blockchain rails for real-world asset tokenization with compliance, identity controls, and auditability built into the protocol layer.",
-    images: ["/og-image.png"],
+    images: [`${siteUrl}/og-image.png`],
   },
 };
 
