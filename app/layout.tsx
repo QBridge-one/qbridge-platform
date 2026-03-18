@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://qbridge.one";
+// Use the exact URL people use to open your site (with or without www).
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.qbridge.one";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
