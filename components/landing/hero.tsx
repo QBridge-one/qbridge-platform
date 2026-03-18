@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { T, containerStyle, bodyStyle, FadeIn, Pill } from "./shared";
-// Image is still used for the hero background fill
 
 export function Hero() {
   return (

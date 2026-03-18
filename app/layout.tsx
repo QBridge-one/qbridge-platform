@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-// Must match your canonical domain. Vercel redirects qbridge.one → www, so use www
-// so og:image returns 200 (crawlers often don't follow redirects for images).
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.qbridge.one";
 
 export const metadata: Metadata = {
