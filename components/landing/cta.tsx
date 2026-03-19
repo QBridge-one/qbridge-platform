@@ -1,6 +1,7 @@
 "use client";
 
 import { T, sectionBase, containerStyle, h2Style, bodyStyle, GridTexture, FadeIn, Pill } from "./shared";
+import { ContactForm } from "./contact-form";
 
 const badges = ["SOC 2 Ready", "Custom ERC-20 Infrastructure", "Multi-Jurisdiction", "Examination Ready"];
 
@@ -21,37 +22,13 @@ export function CTA() {
           <h2 style={{ ...h2Style, textAlign: "center", maxWidth: 640, margin: "12px auto 20px" }}>
             Ready to build compliant digital asset infrastructure?
           </h2>
-          <p style={{ ...bodyStyle, textAlign: "center", margin: "0 auto 48px", maxWidth: 480 }}>
+          <p style={{ ...bodyStyle, textAlign: "center", margin: "0 auto 32px", maxWidth: 480 }}>
             QBridge works with financial institutions, asset managers, and capital market operators
             ready to launch regulated digital asset programs. Access is by application.
           </p>
-          <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
-            <button style={{
-              background: T.warm,
-              color: T.navy,
-              padding: "16px 40px",
-              fontSize: 13,
-              fontWeight: 700,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              border: "none",
-              cursor: "pointer",
-              fontFamily: "'DM Mono', monospace",
-            }}>
-              Request a Demo
-            </button>
-            <button style={{
-              background: "transparent",
-              border: `1px solid ${T.navyBdr}`,
-              color: T.muted,
-              padding: "16px 40px",
-              fontSize: 13,
-              fontWeight: 600,
-              letterSpacing: "0.08em",
-              cursor: "pointer",
-            }}>
-              Download Technical Brief
-            </button>
+
+          <div style={{ marginBottom: 48 }}>
+            <ContactForm />
           </div>
 
           <div style={{ marginTop: 80, paddingTop: 48, borderTop: `1px solid ${T.border}`, display: "flex", justifyContent: "center", gap: 48, flexWrap: "wrap" }}>
