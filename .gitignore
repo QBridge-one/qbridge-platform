@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+# Project uses Yarn — avoid npm lockfile drift
+package-lock.json
 /.pnp
 .pnp.*
 .yarn/*
