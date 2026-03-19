@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { T } from "./shared";
+import { WalletButton } from "@/components/wallet/wallet-button";
 
 const NAV_LINKS = ["Platform", "Compliance", "Use Cases", "About"];
 
@@ -30,20 +32,6 @@ export function Nav() {
     transition: "color 0.2s",
   };
 
-  const ctaStyle = {
-    background: "transparent",
-    border: `1px solid ${T.warm}`,
-    color: T.warm,
-    padding: "8px 20px",
-    fontSize: 12,
-    fontWeight: 700,
-    letterSpacing: "0.1em",
-    textTransform: "uppercase" as const,
-    textDecoration: "none" as const,
-    fontFamily: "'DM Mono', monospace",
-    transition: "all 0.2s",
-  };
-
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: `
@@ -51,11 +39,14 @@ export function Nav() {
         .nav-mobile-btn { display: none; }
         .nav-logo { width: 180px; height: auto; }
         .nav-inner { padding: 0 32px; }
+        .nav-wallet-wrap { display: flex; flex-wrap: wrap; gap: 12px; }
         @media (max-width: 767px) {
           .nav-desktop-links { display: none !important; }
           .nav-mobile-btn { display: flex !important; }
           .nav-logo { width: 140px !important; }
           .nav-inner { padding: 0 16px !important; }
+          .nav-wallet-wrap { flex-direction: column; align-items: stretch; }
+        .nav-wallet-wrap .nav-wallet-buttons { flex-direction: column; }
         }
       `}} />
       <nav style={{
@@ -70,7 +61,7 @@ export function Nav() {
         transition: "background 0.4s ease",
       }}>
         <div className="nav-inner" style={{ maxWidth: 1160, width: "100%", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 68, minHeight: 68, overflow: "hidden" }}>
-          <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+          <Link href="/" style={{ display: "flex", alignItems: "center", flexShrink: 0, textDecoration: "none" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/qbridge-logo.png"
@@ -78,7 +69,7 @@ export function Nav() {
               className="nav-logo"
               style={{ display: "block", mixBlendMode: "screen" }}
             />
-          </div>
+          </Link>
 
           {/* Desktop: inline links - hidden on mobile via CSS */}
           <div className="nav-desktop-links">
@@ -89,11 +80,7 @@ export function Nav() {
                 {l}
               </a>
             ))}
-            <a href="#contact" style={ctaStyle}
-              onMouseEnter={e => { e.currentTarget.style.background = T.warm; e.currentTarget.style.color = T.navy; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.warm; }}>
-              Request Access
-            </a>
+            <WalletButton />
           </div>
 
           {/* Mobile: hamburger - visible only on mobile via CSS */}
@@ -181,6 +168,19 @@ export function Nav() {
           >
             ×
           </button>
+          <Link
+            href="/"
+            onClick={() => setMenuOpen(false)}
+            style={{ display: "block", flexShrink: 0, marginBottom: 8, textDecoration: "none" }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/qbridge-logo.png"
+              alt="QBridge logo"
+              className="nav-logo"
+              style={{ display: "block", mixBlendMode: "screen", width: 140, height: "auto" }}
+            />
+          </Link>
           {NAV_LINKS.map(l => (
             <a
               key={l}
@@ -191,13 +191,9 @@ export function Nav() {
               {l}
             </a>
           ))}
-          <a
-            href="#contact"
-            onClick={() => setMenuOpen(false)}
-            style={{ ...ctaStyle, marginTop: 16, textAlign: "center", padding: "14px 20px" }}
-          >
-            Request Access
-          </a>
+          <div className="nav-wallet-wrap" style={{ marginTop: 16 }}>
+            <WalletButton />
+          </div>
         </div>
       </>
     </>

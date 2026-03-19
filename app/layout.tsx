@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Web3AuthProviders } from "@/components/providers/web3auth-providers";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.qbridge.one";
 
@@ -58,7 +59,7 @@ export default function RootLayout({
         />
       </head>
       <body>
-        {children}
+        <Web3AuthProviders>{children}</Web3AuthProviders>
       </body>
     </html>
   );
