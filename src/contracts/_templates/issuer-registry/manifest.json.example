@@ -1,0 +1,24 @@
+{
+  "contractName": "IssuerRegistry",
+  "featureKey": "issuer-registry",
+  "contractAddressKey": "issuerRegistry",
+  "abiPath": "src/contracts/issuer-registry/abi.json",
+  "functions": {
+    "include": [
+      "registerIssuer",
+      "getIssuer",
+      "isIssuerActive"
+    ],
+    "overrides": {
+      "registerIssuer": {
+        "displayName": "Register Issuer",
+        "description": "Add a new issuer to the registry.",
+        "dangerous": false,
+        "paramLabels": {
+          "issuer": "Issuer Address",
+          "metadataUri": "Metadata URI"
+        }
+      }
+    }
+  }
+}

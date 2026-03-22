@@ -1,0 +1,312 @@
+{
+  "contractName": "TokenAccessManager",
+  "featureKey": "token-access-manager",
+  "contractAddressKey": "tokenAccessManager",
+  "abiPath": "contracts/token-access-manager/abi.json",
+  "functions": {
+    "include": [
+      "ADMIN_ROLE",
+      "PUBLIC_ROLE",
+      "canCall",
+      "cancel",
+      "execute",
+      "getAccess",
+      "getRoleAdmin",
+      "getRoleGrantDelay",
+      "getRoleGuardian",
+      "getSchedule",
+      "getTargetAdminDelay",
+      "getTargetFunctionRole",
+      "grantRole",
+      "hasRole",
+      "initialize",
+      "isTargetClosed",
+      "labelRole",
+      "renounceRole",
+      "revokeRole",
+      "schedule",
+      "setGrantDelay",
+      "setRoleAdmin",
+      "setRoleGuardian",
+      "setTargetAdminDelay",
+      "setTargetClosed",
+      "setTargetFunctionRole",
+      "updateAuthority",
+      "updateTokenAuthority"
+    ],
+    "overrides": {
+      "ADMIN_ROLE": {
+        "displayName": "Get Admin Role ID",
+        "description": "Retrieve the unique identifier for the system administrator role.",
+        "successMessage": "Admin role ID retrieved successfully.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "PUBLIC_ROLE": {
+        "displayName": "Get Public Role ID",
+        "description": "Retrieve the unique identifier for the public access role.",
+        "successMessage": "Public role ID retrieved successfully.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "canCall": {
+        "displayName": "Check Call Permission",
+        "description": "Verify if a specific address is authorized to call a function on a target contract.",
+        "successMessage": "Permission status verified.",
+        "dangerous": false,
+        "paramLabels": {
+          "caller": "Caller Address",
+          "target": "Target Contract",
+          "selector": "Function Selector"
+        }
+      },
+      "cancel": {
+        "displayName": "Cancel Operation",
+        "description": "Cancel a previously scheduled operation before it is executed.",
+        "successMessage": "Operation cancelled successfully.",
+        "dangerous": true,
+        "paramLabels": {
+          "caller": "Caller Address",
+          "target": "Target Contract",
+          "data": "Call Data"
+        }
+      },
+      "execute": {
+        "displayName": "Execute Operation",
+        "description": "Execute a scheduled operation that has completed its required delay.",
+        "successMessage": "Operation executed successfully.",
+        "dangerous": false,
+        "paramLabels": {
+          "target": "Target Contract",
+          "data": "Call Data"
+        }
+      },
+      "getAccess": {
+        "displayName": "Get Access Details",
+        "description": "Retrieve detailed membership and delay information for an account's role.",
+        "successMessage": "Access details retrieved.",
+        "dangerous": false,
+        "paramLabels": {
+          "roleId": "Role ID",
+          "account": "Wallet Address"
+        }
+      },
+      "getRoleAdmin": {
+        "displayName": "Get Role Administrator",
+        "description": "Identify which role has administrative authority over the specified role.",
+        "successMessage": "Role administrator identified.",
+        "dangerous": false,
+        "paramLabels": {
+          "roleId": "Role ID"
+        }
+      },
+      "getRoleGrantDelay": {
+        "displayName": "Get Role Grant Delay",
+        "description": "Get the waiting period required before a role grant becomes active.",
+        "successMessage": "Grant delay retrieved.",
+        "dangerous": false,
+        "paramLabels": {
+          "roleId": "Role ID"
+        }
+      },
+      "getRoleGuardian": {
+        "displayName": "Get Role Guardian",
+        "description": "Identify the guardian role authorized to cancel operations for this role.",
+        "successMessage": "Role guardian identified.",
+        "dangerous": false,
+        "paramLabels": {
+          "roleId": "Role ID"
+        }
+      },
+      "getSchedule": {
+        "displayName": "Get Operation Schedule",
+        "description": "Check the scheduled execution timestamp for a specific operation ID.",
+        "successMessage": "Schedule information retrieved.",
+        "dangerous": false,
+        "paramLabels": {
+          "id": "Operation ID"
+        }
+      },
+      "getTargetAdminDelay": {
+        "displayName": "Get Target Admin Delay",
+        "description": "Get the delay required for administrative changes on a specific target contract.",
+        "successMessage": "Target admin delay retrieved.",
+        "dangerous": false,
+        "paramLabels": {
+          "target": "Target Contract"
+        }
+      },
+      "getTargetFunctionRole": {
+        "displayName": "Get Function Role",
+        "description": "Identify the role required to call a specific function on a target contract.",
+        "successMessage": "Required role identified.",
+        "dangerous": false,
+        "paramLabels": {
+          "target": "Target Contract",
+          "selector": "Function Selector"
+        }
+      },
+      "grantRole": {
+        "displayName": "Grant Role",
+        "description": "Assign a role to a wallet address with a specific execution delay.",
+        "successMessage": "Role granted successfully.",
+        "dangerous": false,
+        "paramLabels": {
+          "roleId": "Role ID",
+          "account": "Wallet Address",
+          "executionDelay": "Execution Delay (seconds)"
+        }
+      },
+      "hasRole": {
+        "displayName": "Check Role Membership",
+        "description": "Check if a wallet address is a member of a specific role.",
+        "successMessage": "Role membership status retrieved.",
+        "dangerous": false,
+        "paramLabels": {
+          "roleId": "Role ID",
+          "account": "Wallet Address"
+        }
+      },
+      "initialize": {
+        "displayName": "Initialize Manager",
+        "description": "Set the initial administrator for the access management system.",
+        "successMessage": "Access manager initialized.",
+        "dangerous": false,
+        "paramLabels": {
+          "initialAdmin": "Initial Admin Address"
+        }
+      },
+      "isTargetClosed": {
+        "displayName": "Check Target Status",
+        "description": "Check if a target contract is currently closed to all interactions.",
+        "successMessage": "Target status retrieved.",
+        "dangerous": false,
+        "paramLabels": {
+          "target": "Target Contract"
+        }
+      },
+      "labelRole": {
+        "displayName": "Label Role",
+        "description": "Assign a human-readable name to a role ID for easier management.",
+        "successMessage": "Role label updated.",
+        "dangerous": false,
+        "paramLabels": {
+          "roleId": "Role ID",
+          "label": "Role Name"
+        }
+      },
+      "renounceRole": {
+        "displayName": "Renounce Role",
+        "description": "Voluntarily remove a role from your own wallet address.",
+        "successMessage": "Role renounced successfully.",
+        "dangerous": true,
+        "paramLabels": {
+          "roleId": "Role ID",
+          "callerConfirmation": "Confirm Wallet Address"
+        }
+      },
+      "revokeRole": {
+        "displayName": "Revoke Role",
+        "description": "Remove a role from a specific wallet address.",
+        "successMessage": "Role revoked successfully.",
+        "dangerous": true,
+        "paramLabels": {
+          "roleId": "Role ID",
+          "account": "Wallet Address"
+        }
+      },
+      "schedule": {
+        "displayName": "Schedule Operation",
+        "description": "Propose an operation to be executed after a specific timestamp.",
+        "successMessage": "Operation scheduled successfully.",
+        "dangerous": false,
+        "paramLabels": {
+          "target": "Target Contract",
+          "data": "Call Data",
+          "when": "Execution Timestamp"
+        }
+      },
+      "setGrantDelay": {
+        "displayName": "Set Grant Delay",
+        "description": "Update the delay required for new role assignments to take effect.",
+        "successMessage": "Grant delay updated.",
+        "dangerous": false,
+        "paramLabels": {
+          "roleId": "Role ID",
+          "newDelay": "New Delay (seconds)"
+        }
+      },
+      "setRoleAdmin": {
+        "displayName": "Set Role Administrator",
+        "description": "Assign a new administrative role to manage the specified role.",
+        "successMessage": "Role administrator updated.",
+        "dangerous": false,
+        "paramLabels": {
+          "roleId": "Role ID",
+          "admin": "Admin Role ID"
+        }
+      },
+      "setRoleGuardian": {
+        "displayName": "Set Role Guardian",
+        "description": "Assign a new guardian role for the specified role.",
+        "successMessage": "Role guardian updated.",
+        "dangerous": false,
+        "paramLabels": {
+          "roleId": "Role ID",
+          "guardian": "Guardian Role ID"
+        }
+      },
+      "setTargetAdminDelay": {
+        "displayName": "Set Target Admin Delay",
+        "description": "Update the administrative delay for a specific target contract.",
+        "successMessage": "Target admin delay updated.",
+        "dangerous": false,
+        "paramLabels": {
+          "target": "Target Contract",
+          "newDelay": "New Delay (seconds)"
+        }
+      },
+      "setTargetClosed": {
+        "displayName": "Set Target Closed Status",
+        "description": "Restrict or allow all interactions with a specific target contract.",
+        "successMessage": "Target closed status updated.",
+        "dangerous": true,
+        "paramLabels": {
+          "target": "Target Contract",
+          "closed": "Is Closed"
+        }
+      },
+      "setTargetFunctionRole": {
+        "displayName": "Set Function Role",
+        "description": "Assign a required role to specific function selectors on a target contract.",
+        "successMessage": "Function roles updated.",
+        "dangerous": false,
+        "paramLabels": {
+          "target": "Target Contract",
+          "selectors": "Function Selectors",
+          "roleId": "Role ID"
+        }
+      },
+      "updateAuthority": {
+        "displayName": "Update Authority",
+        "description": "Change the access control authority for a target contract.",
+        "successMessage": "Authority updated successfully.",
+        "dangerous": true,
+        "paramLabels": {
+          "target": "Target Contract",
+          "newAuthority": "New Authority Address"
+        }
+      },
+      "updateTokenAuthority": {
+        "displayName": "Update Token Authority",
+        "description": "Change the access control authority for a specific token contract.",
+        "successMessage": "Token authority updated successfully.",
+        "dangerous": true,
+        "paramLabels": {
+          "target": "Token Address",
+          "newAuthority": "New Authority Address"
+        }
+      }
+    }
+  }
+}

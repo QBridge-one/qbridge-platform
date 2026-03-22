@@ -42,3 +42,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.scripts-out/
+
+#files
+AIcreated/
+
+# Cursor / IDE (local MCP, machine-specific)
+.cursor/
