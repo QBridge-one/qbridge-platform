@@ -1,0 +1,65 @@
+// ============================================================
+// app/ops/layout.tsx — QBridge internal ops shell (/ops)
+// ============================================================
+
+import { OpsSidebar } from "@/components/dashboard/ops-sidebar";
+import { DashboardHeaderAccount } from "@/components/dashboard/dashboard-header-account";
+import { Bell, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: {
+    template: "%s — QBridge Ops",
+    default: "QBridge Ops",
+  },
+};
+
+export default function OpsLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-h-screen bg-background">
+      <OpsSidebar
+        platformRole="ADMIN"
+        walletAddress="0xC3D4533949D52ee67447c87F40c8b98092FD1dF1"
+        operatorName="QBridge Operations"
+      />
+
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <header className="flex h-16 shrink-0 items-center gap-4 border-b bg-card px-6">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search issuers, flags, activity…"
+              className="pl-9 h-9 bg-background"
+            />
+          </div>
+
+          <div className="ml-auto flex items-center gap-3">
+            <Badge variant="outline" className="text-xs gap-1.5 hidden sm:flex">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              Ops · Sepolia
+            </Badge>
+
+            <Separator orientation="vertical" className="h-6" />
+
+            <Button variant="ghost" size="icon" className="relative h-9 w-9">
+              <Bell className="h-4 w-4" />
+              <span className="sr-only">Notifications</span>
+            </Button>
+
+            <DashboardHeaderAccount />
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto">{children}</main>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,123 @@
+"use client";
+
+// ============================================================
+// app/workspace/assets/new/_components/wizard-stepper.tsx
+// Step indicator for the asset creation wizard
+// ============================================================
+
+import { cn } from "@/lib/utils";
+import { Check } from "lucide-react";
+
+interface Step {
+  number: number;
+  label: string;
+  description: string;
+}
+
+const STEPS: Step[] = [
+  { number: 1, label: "Asset Details", description: "Name, type, jurisdiction" },
+  { number: 2, label: "Token Config", description: "Supply, price, decimals" },
+  { number: 3, label: "Documents", description: "Legal & offering docs" },
+  { number: 4, label: "Compliance", description: "KYC, transfer rules" },
+  { number: 5, label: "Review", description: "Review & submit" },
+];
+
+interface WizardStepperProps {
+  currentStep: number; // 1-5
+}
+
+export function WizardStepper({ currentStep }: WizardStepperProps) {
+  return (
+    <nav aria-label="Progress" className="w-full">
+      {/* Desktop: horizontal stepper */}
+      <ol className="hidden sm:flex items-center w-full">
+        {STEPS.map((step, index) => {
+          const isComplete = currentStep > step.number;
+          const isCurrent = currentStep === step.number;
+          const isUpcoming = currentStep < step.number;
+          const isLast = index === STEPS.length - 1;
+
+          return (
+            <li
+              key={step.number}
+              className={cn("flex items-center", !isLast && "flex-1")}
+            >
+              <div className="flex flex-col items-center gap-1.5">
+                {/* Circle */}
+                <div
+                  className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-full border-2 text-sm font-semibold transition-all duration-200",
+                    isComplete &&
+                      "border-primary bg-primary text-primary-foreground",
+                    isCurrent &&
+                      "border-primary bg-background text-primary shadow-[0_0_0_3px_hsl(var(--primary)/0.15)]",
+                    isUpcoming &&
+                      "border-border bg-background text-muted-foreground"
+                  )}
+                >
+                  {isComplete ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <span>{step.number}</span>
+                  )}
+                </div>
+
+                {/* Labels */}
+                <div className="text-center">
+                  <p
+                    className={cn(
+                      "text-xs font-medium whitespace-nowrap",
+                      isCurrent ? "text-foreground" : "text-muted-foreground"
+                    )}
+                  >
+                    {step.label}
+                  </p>
+                </div>
+              </div>
+
+              {/* Connector line */}
+              {!isLast && (
+                <div
+                  className={cn(
+                    "flex-1 h-px mx-3 transition-colors duration-200 -mt-5",
+                    isComplete ? "bg-primary" : "bg-border"
+                  )}
+                />
+              )}
+            </li>
+          );
+        })}
+      </ol>
+
+      {/* Mobile: compact step indicator */}
+      <div className="flex sm:hidden items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-foreground">
+            Step {currentStep} of {STEPS.length}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {STEPS[currentStep - 1]?.label} —{" "}
+            {STEPS[currentStep - 1]?.description}
+          </p>
+        </div>
+        <div className="flex gap-1">
+          {STEPS.map((step) => (
+            <div
+              key={step.number}
+              className={cn(
+                "h-1.5 rounded-full transition-all duration-200",
+                currentStep > step.number
+                  ? "w-4 bg-primary"
+                  : currentStep === step.number
+                  ? "w-4 bg-primary"
+                  : "w-1.5 bg-muted"
+              )}
+            />
+          ))}
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+export { STEPS };

@@ -28,10 +28,10 @@ function WalletButtonInner() {
     shortAddress,
   } = useWallet();
 
-  // Redirect to dashboard after successful connect (when on landing)
+  // Redirect to issuer workspace after successful connect (when on landing)
   useEffect(() => {
     if (isConnected && pathname === "/") {
-      router.push("/dashboard");
+      router.push("/workspace");
     }
   }, [isConnected, pathname, router]);
 
@@ -54,7 +54,7 @@ function WalletButtonInner() {
           {shortAddress ?? ""}
         </span>
         <Link
-          href="/dashboard"
+          href="/workspace"
           style={{
             ...btnBase,
             background: T.warm,
@@ -72,7 +72,7 @@ function WalletButtonInner() {
             e.currentTarget.style.color = T.navy;
           }}
         >
-          Dashboard
+          Workspace
         </Link>
         <button
           type="button"
