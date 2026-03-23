@@ -1,30 +1,21 @@
 "use client";
 
-import { AccessManagerPanel } from "@/components/access-manager/AccessManagerPanel";
-import { useContracts } from "@/lib/hooks/useContracts";
-import { buildPlatformAMConfig } from "@/lib/contracts/config-factory";
-import { Badge } from "@/components/ui/badge";
+import { TeamAccessPage } from "@/components/team/TeamAccessPage";
+import {
+  MOCK_OPS_TEAM_MEMBERS,
+  PLATFORM_TEAM_BADGE_CLASS,
+  PLATFORM_TEAM_ROLE_DEFS,
+} from "@/lib/mock/platform-team";
 
 export default function OpsTeamPage() {
-  const { chainId } = useContracts();
-
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Team & access</h1>
-          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            QBridge platform roles (PlatformAccessManager). Separate from issuer token roles in{" "}
-            <span className="font-medium text-foreground">Workspace</span>. Mock data until wagmi wiring is
-            complete.
-          </p>
-        </div>
-        <Badge variant="secondary" className="w-fit shrink-0">
-          QBridge Ops
-        </Badge>
-      </div>
-
-      <AccessManagerPanel config={buildPlatformAMConfig(chainId)} />
-    </div>
+    <TeamAccessPage
+      title="Access & Team"
+      description="Manage QBridge internal team access and on-chain PlatformAccessManager roles. Dashboard login tier (Member/Admin) and platform roles are separate — both are shown in the table."
+      initialMembers={MOCK_OPS_TEAM_MEMBERS}
+      accessManager="platform"
+      roleDefs={PLATFORM_TEAM_ROLE_DEFS}
+      roleBadgeClass={PLATFORM_TEAM_BADGE_CLASS}
+    />
   );
 }

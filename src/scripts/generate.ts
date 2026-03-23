@@ -114,8 +114,8 @@ function runCodegen(manifest: ContractManifest, writer: CodeWriter): void {
   const root = abiResolutionRoot(manifest);
   const { readFunctions, writeFunctions, filteredAbi } = resolveAbiForManifest(root, manifest);
 
-  if (filteredAbi.length === 0) {
-    console.warn(`  │  ⚠  No ABI items matched manifest — check abiPath and include list.`);
+  if (readFunctions.length === 0 && writeFunctions.length === 0) {
+    console.warn(`  │  ⚠  No ABI functions matched manifest — check abiPath and include list.`);
     console.log(`  └─\n`);
     return;
   }

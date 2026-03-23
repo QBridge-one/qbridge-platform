@@ -132,8 +132,19 @@ export class OnChainComplianceAdapter implements CompliancePort {
       if (message.includes("InvestorNotEligible")) {
         return { status: "failed", failedRule: "InvestorEligibility", reason: "Investor not eligible" };
       }
-      if (message.includes("AccessManagerUnauthorized")) {
-        return { status: "failed", failedRule: "AccessControl", reason: "Insufficient role" };
+      // OpenZeppelin AccessManager — sender lacks authority for grantRole/revokeRole/etc.
+      // Selector 0xf07e038f = AccessManagerUnauthorizedAccount(address,uint64) when ABI has no errors.
+      if (
+        message.includes("AccessManagerUnauthorized") ||
+        message.includes("AccessManagerUnauthorizedAccount") ||
+        message.includes("0xf07e038f")
+      ) {
+        return {
+          status: "failed",
+          failedRule: "AccessControl",
+          reason:
+            "This wallet is not allowed to perform that action on the Access Manager. For token roles, connect a wallet that holds Token ADMIN (role 0) or the configured admin for that role.",
+        };
       }
 
       // Simulation failed for unknown reason — still a compliance block

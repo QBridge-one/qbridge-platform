@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Web3AuthProviders } from "@/components/providers/web3auth-providers";
+import { AppToaster } from "@/components/providers/app-toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.qbridge.one";
@@ -61,7 +62,10 @@ export default function RootLayout({
       </head>
       <body>
         <Web3AuthProviders>
-          <TooltipProvider>{children}</TooltipProvider>
+          <TooltipProvider>
+            {children}
+            <AppToaster />
+          </TooltipProvider>
         </Web3AuthProviders>
       </body>
     </html>

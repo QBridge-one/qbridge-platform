@@ -1,10 +1,10 @@
 import { autoGenHeader, toHookBaseName } from "./code-writer";
-import type { AbiFunctionItem } from "./abi-resolver";
+import type { AbiExportItem, AbiFunctionItem } from "./abi-resolver";
 import type { ContractManifest } from "./manifest-schema";
 import { abiExportConstName } from "./abi-export-name";
 import { argsInterfaceName } from "./ts-types";
 
-export function generateAbiTs(filteredAbi: AbiFunctionItem[], manifest: ContractManifest): string {
+export function generateAbiTs(filteredAbi: AbiExportItem[], manifest: ContractManifest): string {
   const name = abiExportConstName(manifest.featureKey);
   return `${autoGenHeader()}export const ${name} = ${JSON.stringify(filteredAbi)} as const;
 `;
