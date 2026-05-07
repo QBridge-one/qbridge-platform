@@ -34,6 +34,43 @@ import {
   mapRoleToClerk,
   readAppRolesFromMetadata,
 } from "../identity/clerk.adapter";
+import type { Address } from "../../core/types";
+
+type ClerkClient = Awaited<ReturnType<typeof clerkClient>>;
+
+/** Read primaryWallet from a Clerk user's publicMetadata. */
+function pickPrimaryWalletFromMeta(meta: unknown): Address | null {
+  if (meta && typeof meta === "object" && "primaryWallet" in meta) {
+    const v = (meta as { primaryWallet?: unknown }).primaryWallet;
+    if (typeof v === "string" && /^0x[a-fA-F0-9]{40}$/.test(v)) {
+      return v as Address;
+    }
+  }
+  return null;
+}
+
+/** Batch-fetch userIds → primaryWallet (linked via SIWE). Returns an
+ *  empty Map when the input is empty. Tolerates partial failures by
+ *  returning whatever Clerk gave us. */
+async function fetchWalletMap(
+  cc: ClerkClient,
+  userIds: string[],
+): Promise<Map<string, Address>> {
+  const out = new Map<string, Address>();
+  if (userIds.length === 0) return out;
+  // De-dupe to keep the Clerk request small.
+  const unique = Array.from(new Set(userIds));
+  try {
+    const list = await cc.users.getUserList({ userId: unique, limit: unique.length });
+    for (const u of list.data) {
+      const wallet = pickPrimaryWalletFromMeta(u.publicMetadata);
+      if (wallet) out.set(u.id, wallet);
+    }
+  } catch {
+    // Fall through with whatever's been resolved (none, in this case).
+  }
+  return out;
+}
 
 type ClerkOrg = Awaited<ReturnType<Awaited<ReturnType<typeof clerkClient>>["organizations"]["getOrganization"]>>;
 type ClerkMember = Awaited<
@@ -69,7 +106,11 @@ function mapOrg(o: ClerkOrg): AppOrg {
   };
 }
 
-function mapMember(m: ClerkMember, kind: OrgKind): OrgMember {
+function mapMember(
+  m: ClerkMember,
+  kind: OrgKind,
+  walletByUserId?: ReadonlyMap<string, Address>,
+): OrgMember {
   const ud = m.publicUserData;
   const id = ud?.userId ?? m.id;
   const fromMeta = readAppRolesFromMetadata(m.publicMetadata);
@@ -85,7 +126,10 @@ function mapMember(m: ClerkMember, kind: OrgKind): OrgMember {
     appRoles,
     appRole: appRoles[0],
     status: "active",
-    walletAddress: null,
+    // Per-membership wallet is sourced from the USER's
+    // publicMetadata.primaryWallet (set by the SIWE wallet-link flow).
+    // Caller batch-resolves and passes the map; null when not linked.
+    walletAddress: walletByUserId?.get(id) ?? null,
     joinedAt: new Date(m.createdAt).toISOString(),
     lastActiveAt: m.updatedAt ? new Date(m.updatedAt).toISOString() : null,
   };
@@ -137,7 +181,11 @@ class ClerkOrganizationAdapter implements OrganizationPort {
     if (!org) throw orgNotFound(orgId);
     const kind = mapKindFromMetadata(org.publicMetadata);
     const list = await cc.organizations.getOrganizationMembershipList({ organizationId: orgId });
-    return list.data.map((m) => mapMember(m, kind));
+    const userIds = list.data
+      .map((m) => m.publicUserData?.userId)
+      .filter((u): u is string => typeof u === "string");
+    const walletByUserId = await fetchWalletMap(cc, userIds);
+    return list.data.map((m) => mapMember(m, kind, walletByUserId));
   }
 
   async listInvites(orgId: string): Promise<Invite[]> {
@@ -269,11 +317,12 @@ class ClerkOrganizationAdapter implements OrganizationPort {
       if (/not.found|404/i.test(msg)) throw membershipNotFound();
       throw err;
     }
-    // Re-read to return the fresh OrgMember.
+    // Re-read to return the fresh OrgMember (with wallet resolved).
     const list = await cc.organizations.getOrganizationMembershipList({ organizationId: orgId });
     const found = list.data.find((m) => m.publicUserData?.userId === userId);
     if (!found) throw membershipNotFound();
-    return mapMember(found, kind);
+    const walletByUserId = await fetchWalletMap(cc, [userId]);
+    return mapMember(found, kind, walletByUserId);
   }
 
   async removeMember(orgId: string, userId: string): Promise<void> {
