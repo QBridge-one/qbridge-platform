@@ -30,7 +30,29 @@ import {
 import { useState } from "react";
 import type { PlatformRole } from "@/types/roles";
 import { can, type Permission } from "@/lib/auth/permissions";
-import type { AppRole } from "@/lib/core/identity.types";
+import { APP_ROLE_LABELS, type AppRole } from "@/lib/core/identity.types";
+
+function opsRoleBadge(
+  roles: AppRole[] | null,
+  primary: AppRole | null,
+  fallback: PlatformRole | null | undefined,
+): string {
+  if (primary && roles && roles.length > 0) {
+    return roles.length === 1
+      ? APP_ROLE_LABELS[primary]
+      : `${APP_ROLE_LABELS[primary]} +${roles.length - 1}`;
+  }
+  switch (fallback) {
+    case "ADMIN":
+      return "Platform admin";
+    case "COMPLIANCE":
+      return "Platform compliance";
+    case "OPERATOR":
+      return "Platform operator";
+    default:
+      return "Platform auditor";
+  }
+}
 
 interface NavItem {
   label: string;
@@ -103,12 +125,15 @@ const SECTION_LABELS: Record<string, string> = {
 interface OpsSidebarProps {
   /**
    * @deprecated kept for compatibility with existing callers — purely
-   * cosmetic. Use `appRole` for RBAC; chain-role badge text falls back
-   * to this when `appRole` isn't supplied.
+   * cosmetic. Use `appRoles` for RBAC; chain-role badge text falls back
+   * to this when `appRoles` isn't supplied.
    */
   platformRole?: PlatformRole | null;
   operatorName?: string;
   walletAddress?: string;
+  /** Full role-set for this user in the active org (preferred). */
+  appRoles?: AppRole[] | null;
+  /** @deprecated Pass `appRoles` instead. */
   appRole?: AppRole | null;
 }
 
@@ -116,13 +141,18 @@ export function OpsSidebar({
   platformRole,
   operatorName = "QBridge Ops",
   walletAddress,
+  appRoles = null,
   appRole = null,
 }: OpsSidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
+  const effectiveRoles: AppRole[] | null =
+    appRoles && appRoles.length > 0 ? appRoles : appRole ? [appRole] : null;
+  const primaryRole = effectiveRoles?.[0] ?? null;
+
   const visibleItems = NAV_ITEMS.filter(
-    (i) => !i.requires || can(appRole, i.requires),
+    (i) => !i.requires || can(effectiveRoles, i.requires),
   );
 
   const sections = ["main", "admin", "access"];
@@ -233,20 +263,10 @@ export function OpsSidebar({
           ))}
         </nav>
 
-        {!collapsed && (appRole || platformRole) && (
+        {!collapsed && (primaryRole || platformRole) && (
           <div className="px-4 pb-2">
             <Badge variant="outline" className="text-[10px] w-full justify-center">
-              {appRole === "ops_admin"
-                ? "Ops admin"
-                : appRole === "ops_member"
-                  ? "Ops member"
-                  : platformRole === "ADMIN"
-                    ? "Platform admin"
-                    : platformRole === "COMPLIANCE"
-                      ? "Platform compliance"
-                      : platformRole === "OPERATOR"
-                        ? "Platform operator"
-                        : "Platform auditor"}
+              {opsRoleBadge(effectiveRoles, primaryRole, platformRole)}
             </Badge>
           </div>
         )}

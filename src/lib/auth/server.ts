@@ -31,7 +31,7 @@ export async function requireOrg(kind?: OrgKind): Promise<AppSession & { activeO
   if (kind && s.activeOrg.kind !== kind) {
     throw forbidden(`Active organization is not a ${kind} workspace.`);
   }
-  if (s.appRole && !roleMatchesPlane(s.appRole, s.activeOrg.kind)) {
+  if (s.appRoles.length > 0 && !roleMatchesPlane(s.appRoles, s.activeOrg.kind)) {
     throw forbidden("Role/plane mismatch.");
   }
   return s as AppSession & { activeOrg: NonNullable<AppSession["activeOrg"]> };
@@ -41,6 +41,6 @@ export async function requirePermission(
   perm: Permission,
 ): Promise<AppSession & { activeOrg: NonNullable<AppSession["activeOrg"]> }> {
   const s = await requireOrg();
-  if (!can(s.appRole, perm)) throw forbidden(`Missing permission: ${perm}`);
+  if (!can(s.appRoles, perm)) throw forbidden(`Missing permission: ${perm}`);
   return s;
 }

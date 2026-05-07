@@ -32,7 +32,16 @@ import {
 } from "@/components/ui/tooltip";
 import { useState } from "react";
 import { can, type Permission } from "@/lib/auth/permissions";
-import type { AppRole } from "@/lib/core/identity.types";
+import { APP_ROLE_LABELS, type AppRole } from "@/lib/core/identity.types";
+
+function workspaceRoleBadge(
+  roles: AppRole[] | null,
+  primary: AppRole | null,
+): string {
+  if (!roles || roles.length === 0 || !primary) return "Token RBAC (issuer)";
+  if (roles.length === 1) return APP_ROLE_LABELS[primary];
+  return `${APP_ROLE_LABELS[primary]} +${roles.length - 1}`;
+}
 
 interface NavItem {
   label: string;
@@ -133,19 +142,27 @@ const SECTION_LABELS: Record<string, string> = {
 interface WorkspaceSidebarProps {
   issuerName?: string;
   walletAddress?: string;
+  /** Full role-set for this user in the active org (preferred). */
+  appRoles?: AppRole[] | null;
+  /** @deprecated Pass `appRoles` instead. */
   appRole?: AppRole | null;
 }
 
 export function WorkspaceSidebar({
   issuerName = "Issuer workspace",
   walletAddress,
+  appRoles = null,
   appRole = null,
 }: WorkspaceSidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
+  const effectiveRoles: AppRole[] | null =
+    appRoles && appRoles.length > 0 ? appRoles : appRole ? [appRole] : null;
+  const primaryRole = effectiveRoles?.[0] ?? null;
+
   const visibleItems = NAV_ITEMS.filter(
-    (i) => !i.requires || can(appRole, i.requires),
+    (i) => !i.requires || can(effectiveRoles, i.requires),
   );
 
   const sections = ["main", "assets", "tokens", "compliance", "settings"];
@@ -259,11 +276,7 @@ export function WorkspaceSidebar({
         {!collapsed && (
           <div className="px-4 pb-2">
             <Badge variant="outline" className="text-[10px] w-full justify-center">
-              {appRole === "issuer_admin"
-                ? "Workspace admin"
-                : appRole === "issuer_member"
-                  ? "Workspace member"
-                  : "Token RBAC (issuer)"}
+              {workspaceRoleBadge(effectiveRoles, primaryRole)}
             </Badge>
           </div>
         )}

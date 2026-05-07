@@ -8,10 +8,13 @@ import { z } from "zod";
 import { auditLogAdapter, organizationAdapter } from "@/lib/container.server";
 import { requireOrg, requirePermission } from "@/lib/auth/server";
 import { errorResponse } from "@/lib/auth/api";
+import { APP_ROLES, type AppRole } from "@/lib/core/identity.types";
 import type { Permission } from "@/lib/auth/permissions";
 
+const APP_ROLE_ENUM = z.enum(APP_ROLES as [AppRole, ...AppRole[]]);
+
 const RoleSchema = z.object({
-  appRole: z.enum(["ops_admin", "ops_member", "issuer_admin", "issuer_member"]),
+  appRole: APP_ROLE_ENUM,
 });
 
 const CHANGE: Record<"ops" | "issuer", Permission> = {

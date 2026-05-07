@@ -28,7 +28,11 @@ import {
   membershipNotFound,
   orgNotFound,
 } from "../../core/errors";
-import { mapRoleFromClerk, mapRoleToClerk } from "../identity/clerk.adapter";
+import {
+  mapRoleFromClerk,
+  mapRoleToClerk,
+  readAppRolesFromMetadata,
+} from "../identity/clerk.adapter";
 
 type ClerkOrg = Awaited<ReturnType<Awaited<ReturnType<typeof clerkClient>>["organizations"]["getOrganization"]>>;
 type ClerkMember = Awaited<
@@ -67,6 +71,9 @@ function mapOrg(o: ClerkOrg): AppOrg {
 function mapMember(m: ClerkMember, kind: OrgKind): OrgMember {
   const ud = m.publicUserData;
   const id = ud?.userId ?? m.id;
+  const fromMeta = readAppRolesFromMetadata(m.publicMetadata);
+  const appRoles =
+    fromMeta && fromMeta.length > 0 ? fromMeta : [mapRoleFromClerk(m.role, kind)];
   return {
     userId: id,
     orgId: m.organization.id,
@@ -74,7 +81,8 @@ function mapMember(m: ClerkMember, kind: OrgKind): OrgMember {
     displayName:
       [ud?.firstName, ud?.lastName].filter(Boolean).join(" ") || (ud?.identifier ?? null),
     imageUrl: ud?.imageUrl ?? null,
-    appRole: mapRoleFromClerk(m.role, kind),
+    appRoles,
+    appRole: appRoles[0],
     status: "active",
     walletAddress: null,
     joinedAt: new Date(m.createdAt).toISOString(),
@@ -90,13 +98,14 @@ function mapInviteStatus(s: ClerkInvite["status"]): Invite["status"] {
 }
 
 function mapInvite(inv: ClerkInvite): Invite {
-  const meta = inv.publicMetadata as Record<string, unknown> | null | undefined;
-  const appRole = (meta?.appRole as AppRole | undefined) ?? "issuer_member";
+  const fromMeta = readAppRolesFromMetadata(inv.publicMetadata);
+  const appRoles = fromMeta && fromMeta.length > 0 ? fromMeta : ["issuer_member" as AppRole];
   return {
     id: inv.id,
     orgId: inv.organizationId,
     email: inv.emailAddress,
-    appRole,
+    appRole: appRoles[0],
+    appRoles,
     status: mapInviteStatus(inv.status),
     invitedBy: "system",
     createdAt: new Date(inv.createdAt).toISOString(),
@@ -162,6 +171,9 @@ class ClerkOrganizationAdapter implements OrganizationPort {
     input: InviteInput,
   ): Promise<Invite> {
     const cc = await clerkClient();
+    const appRoles = Array.from(
+      new Set<AppRole>([input.appRole, ...(input.appRoles ?? [])]),
+    );
     try {
       const inv = await cc.organizations.createOrganizationInvitation({
         organizationId: orgId,
@@ -169,7 +181,7 @@ class ClerkOrganizationAdapter implements OrganizationPort {
         emailAddress: input.email,
         role: mapRoleToClerk(input.appRole),
         redirectUrl: input.redirectUrl,
-        publicMetadata: { appRole: input.appRole },
+        publicMetadata: { appRole: input.appRole, appRoles },
       });
       return mapInvite(inv);
     } catch (err) {
@@ -206,11 +218,25 @@ class ClerkOrganizationAdapter implements OrganizationPort {
   ): Promise<OrgMember> {
     const cc = await clerkClient();
     try {
+      // Update Clerk's coarse role (admin/member) AND persist the
+      // granular AppRole(s) into membership.publicMetadata.appRoles.
+      // Clerk SDK exposes membership metadata via updateOrganizationMembershipMetadata.
       await cc.organizations.updateOrganizationMembership({
         organizationId: orgId,
         userId,
         role: mapRoleToClerk(appRole),
       });
+      await cc.organizations
+        .updateOrganizationMembershipMetadata({
+          organizationId: orgId,
+          userId,
+          publicMetadata: { appRole, appRoles: [appRole] },
+        })
+        .catch(() => {
+          // Older Clerk SDKs may not expose this method; the coarse
+          // role update above is still applied. mapMember() will then
+          // fall back to baseline derivation from the Clerk role.
+        });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (/not.found|404/i.test(msg)) throw membershipNotFound();

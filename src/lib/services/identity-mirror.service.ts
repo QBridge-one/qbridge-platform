@@ -10,7 +10,8 @@
 
 import "server-only";
 
-import type { AuthEvent } from "../core/identity.types";
+import type { AppRole, AuthEvent } from "../core/identity.types";
+import { isAppRole } from "../core/identity.types";
 import { auditLogAdapter } from "../container.server";
 import { memoryOrganizationStore } from "../adapters/organization/memory.store";
 
@@ -50,6 +51,7 @@ interface MembershipPayload {
   organization?: OrgPayload;
   public_user_data?: { user_id?: string; identifier?: string };
   role?: string;
+  public_metadata?: Record<string, unknown>;
 }
 
 function pickEmail(p: UserPayload): string {
@@ -101,11 +103,26 @@ export async function applyAuthEvent(evt: AuthEvent): Promise<void> {
       }
       const role = (m.role ?? "org:member").toLowerCase();
       const kind = memoryOrganizationStore.getOrg(orgId)?.kind ?? "issuer";
-      const appRole =
-        role.endsWith("admin")
-          ? (kind === "ops" ? "ops_admin" : "issuer_admin")
-          : (kind === "ops" ? "ops_member" : "issuer_member");
-      memoryOrganizationStore.upsertMember(orgId, userId, appRole, "active");
+      const baseline: AppRole = role.endsWith("admin")
+        ? kind === "ops"
+          ? "ops_admin"
+          : "issuer_admin"
+        : kind === "ops"
+          ? "ops_member"
+          : "issuer_member";
+      // Prefer granular appRoles from membership metadata when present.
+      const meta = m.public_metadata;
+      let appRoles: AppRole[] = [baseline];
+      if (meta && typeof meta === "object") {
+        const v = (meta as { appRoles?: unknown }).appRoles;
+        if (Array.isArray(v)) {
+          const valid = v.filter(isAppRole);
+          if (valid.length > 0) appRoles = Array.from(new Set(valid));
+        } else if (isAppRole((meta as { appRole?: unknown }).appRole)) {
+          appRoles = [(meta as { appRole: AppRole }).appRole];
+        }
+      }
+      memoryOrganizationStore.upsertMember(orgId, userId, appRoles, "active");
       break;
     }
     case "membership.deleted": {

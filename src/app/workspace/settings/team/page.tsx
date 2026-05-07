@@ -10,8 +10,8 @@ import { can } from "@/lib/auth/permissions";
 
 export default async function WorkspaceTeamPage() {
   const session = await getSession();
-  const canInvite = can(session?.appRole ?? null, "workspace:team:invite");
-  const canManage = can(session?.appRole ?? null, "workspace:team:remove");
+  const canInvite = can(session?.appRoles ?? null, "workspace:team:invite");
+  const canManage = can(session?.appRoles ?? null, "workspace:team:remove");
 
   return (
     <TeamAccessPage

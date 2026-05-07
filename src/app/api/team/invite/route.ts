@@ -8,12 +8,19 @@ import { z } from "zod";
 import { auditLogAdapter, organizationAdapter } from "@/lib/container.server";
 import { requireOrg, requirePermission } from "@/lib/auth/server";
 import { errorResponse } from "@/lib/auth/api";
-import type { AppRole } from "@/lib/core/identity.types";
+import { APP_ROLES, type AppRole } from "@/lib/core/identity.types";
 import type { Permission } from "@/lib/auth/permissions";
+
+// All known AppRole strings — kept as a Zod enum for body validation.
+// Note: the team-invite UI only sends admin/member legacy fields today;
+// these granular roles are accepted so they can be assigned later via
+// the team page (PATCH /api/team/members/[userId]) once that UI lands.
+const APP_ROLE_ENUM = z.enum(APP_ROLES as [AppRole, ...AppRole[]]);
 
 const InviteSchema = z.object({
   email: z.string().email().transform((s) => s.trim().toLowerCase()),
-  appRole: z.enum(["ops_admin", "ops_member", "issuer_admin", "issuer_member"]).optional(),
+  appRole: APP_ROLE_ENUM.optional(),
+  appRoles: z.array(APP_ROLE_ENUM).optional(),
   // Legacy fields kept for compatibility with the existing UI
   platformRole: z.enum(["admin", "member"]).optional(),
   role: z.enum(["admin", "member"]).optional(),
@@ -72,13 +79,26 @@ export async function POST(request: Request) {
     }
 
     const orgId = session.activeOrg.id;
-    const appRole = resolveAppRole(parsed.data, session.activeOrg.kind);
+    const primaryRole = resolveAppRole(parsed.data, session.activeOrg.kind);
+    const extraRoles = (parsed.data.appRoles ?? []).filter(
+      (r) =>
+        r !== primaryRole &&
+        // plane-sanity: never let an issuer invite include ops_* roles or vice versa
+        (session.activeOrg.kind === "ops"
+          ? r.startsWith("ops_")
+          : r.startsWith("issuer_")),
+    );
     const redirectUrl = resolveInviteRedirect(request);
 
     const invite = await organizationAdapter.inviteMember(
       orgId,
       session.user.id,
-      { email: parsed.data.email, appRole, redirectUrl },
+      {
+        email: parsed.data.email,
+        appRole: primaryRole,
+        appRoles: extraRoles.length > 0 ? [primaryRole, ...extraRoles] : undefined,
+        redirectUrl,
+      },
     );
 
     await auditLogAdapter.append({
@@ -86,7 +106,7 @@ export async function POST(request: Request) {
       actorUserId: session.user.id,
       action: "invite.sent",
       target: parsed.data.email,
-      payload: { inviteId: invite.id, appRole },
+      payload: { inviteId: invite.id, appRole: primaryRole, appRoles: invite.appRoles },
     });
 
     return NextResponse.json({
@@ -94,7 +114,8 @@ export async function POST(request: Request) {
       id: invite.id,
       email: invite.email,
       appRole: invite.appRole,
-      platformRole: appRole.endsWith("_admin") ? "admin" : "member",
+      appRoles: invite.appRoles,
+      platformRole: primaryRole.endsWith("_admin") ? "admin" : "member",
     });
   } catch (err) {
     return errorResponse(err);

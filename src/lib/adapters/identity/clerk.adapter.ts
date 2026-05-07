@@ -9,6 +9,7 @@ import "server-only";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import type { IdentityPort } from "../../ports/identity.port";
 import type { AppOrg, AppRole, AppSession, AppUser } from "../../core/identity.types";
+import { isAppRole } from "../../core/identity.types";
 import { unauthenticated } from "../../core/errors";
 
 /** Read kind from a Clerk org's publicMetadata. Default: "issuer". */
@@ -36,24 +37,41 @@ function pickPrimaryWallet(meta: unknown): `0x${string}` | null {
 }
 
 /** Maps Clerk membership role string ("org:admin", "org:member", or custom)
- *  to AppRole, plane-aware. */
+ *  to a baseline AppRole, plane-aware. This is the FALLBACK only — when
+ *  membership.publicMetadata.appRoles isn't set, we derive the baseline
+ *  from Clerk's coarse role. */
 export function mapRoleFromClerk(
   clerkRole: string,
   kind: "ops" | "issuer",
 ): AppRole {
   if (clerkRole === "org:admin") return kind === "ops" ? "ops_admin" : "issuer_admin";
   if (clerkRole === "org:member") return kind === "ops" ? "ops_member" : "issuer_member";
-  if (clerkRole.endsWith(":ops_admin")) return "ops_admin";
-  if (clerkRole.endsWith(":ops_member")) return "ops_member";
-  if (clerkRole.endsWith(":issuer_admin")) return "issuer_admin";
-  if (clerkRole.endsWith(":issuer_member")) return "issuer_member";
+  // Custom Clerk roles can encode an AppRole in the suffix.
+  const m = /:([a-z_]+)$/.exec(clerkRole);
+  if (m && isAppRole(m[1])) return m[1];
   return kind === "ops" ? "ops_member" : "issuer_member";
 }
 
-/** Inverse mapping for invites — what string we send to Clerk. */
+/** Inverse mapping for invites — what coarse string we send to Clerk.
+ *  Clerk only knows org:admin / org:member; the granular AppRole is
+ *  carried separately in publicMetadata.appRoles. */
 export function mapRoleToClerk(role: AppRole): string {
   if (role === "ops_admin" || role === "issuer_admin") return "org:admin";
   return "org:member";
+}
+
+/** Read the granular `appRoles` array from a Clerk membership/invite
+ *  publicMetadata. Falls back to legacy single `appRole`. Returns null
+ *  when metadata is missing or invalid — caller derives the baseline. */
+export function readAppRolesFromMetadata(meta: unknown): AppRole[] | null {
+  if (!meta || typeof meta !== "object") return null;
+  const m = meta as Record<string, unknown>;
+  if (Array.isArray(m.appRoles)) {
+    const valid = m.appRoles.filter(isAppRole);
+    if (valid.length > 0) return Array.from(new Set(valid));
+  }
+  if (isAppRole(m.appRole)) return [m.appRole];
+  return null;
 }
 
 class ClerkIdentityAdapter implements IdentityPort {
@@ -72,7 +90,7 @@ class ClerkIdentityAdapter implements IdentityPort {
       createdAt: new Date(u.createdAt).toISOString(),
     };
     let activeOrg: AppOrg | null = null;
-    let appRole: AppRole | null = null;
+    let appRoles: AppRole[] = [];
     if (a.orgId) {
       const cc = await clerkClient();
       const o = await cc.organizations.getOrganization({ organizationId: a.orgId });
@@ -86,9 +104,19 @@ class ClerkIdentityAdapter implements IdentityPort {
         issuerId: pickIssuerId(o.publicMetadata),
         createdAt: new Date(o.createdAt).toISOString(),
       };
-      if (a.orgRole) appRole = mapRoleFromClerk(a.orgRole, kind);
+      // Prefer granular appRoles from membership metadata. Look up the
+      // user's membership for this org so we can read its publicMetadata.
+      const memberships = await cc.users.getOrganizationMembershipList({ userId: u.id });
+      const membership = memberships.data.find((m) => m.organization.id === a.orgId);
+      const fromMeta = readAppRolesFromMetadata(membership?.publicMetadata);
+      if (fromMeta && fromMeta.length > 0) {
+        appRoles = fromMeta;
+      } else if (a.orgRole) {
+        appRoles = [mapRoleFromClerk(a.orgRole, kind)];
+      }
     }
-    return { user, activeOrg, appRole };
+    const appRole = appRoles[0] ?? null;
+    return { user, activeOrg, appRoles, appRole };
   }
 
   async requireSession(): Promise<AppSession> {

@@ -14,8 +14,8 @@ import { can } from "@/lib/auth/permissions";
 
 export default async function OpsTeamPage() {
   const session = await getSession();
-  const canInvite = can(session?.appRole ?? null, "ops:team:invite");
-  const canManage = can(session?.appRole ?? null, "ops:team:remove");
+  const canInvite = can(session?.appRoles ?? null, "ops:team:invite");
+  const canManage = can(session?.appRoles ?? null, "ops:team:remove");
 
   return (
     <TeamAccessPage

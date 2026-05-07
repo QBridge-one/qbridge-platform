@@ -32,14 +32,14 @@ export default async function WorkspaceLayout({
   if (!session) redirect("/sign-in");
   if (!session.activeOrg) redirect("/select-workspace");
   if (session.activeOrg.kind !== "issuer") redirect("/select-workspace");
-  if (!can(session.appRole, "workspace:view")) redirect("/select-workspace");
+  if (!can(session.appRoles, "workspace:view")) redirect("/select-workspace");
 
   return (
     <div className="flex min-h-screen bg-background">
       <WorkspaceSidebar
         walletAddress="0xC3D4533949D52ee67447c87F40c8b98092FD1dF1"
         issuerName={session.activeOrg.name ?? "Issuer Workspace"}
-        appRole={session.appRole}
+        appRoles={session.appRoles}
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">

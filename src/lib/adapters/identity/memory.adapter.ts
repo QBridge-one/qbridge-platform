@@ -65,10 +65,11 @@ class MemoryIdentityAdapter implements IdentityPort {
     const user = await this.resolveSessionUser();
     memoryOrganizationStore.upsertUser(user);
     const activeOrg = await this.resolveActiveOrg(user.id);
-    const appRole = activeOrg
-      ? memoryOrganizationStore.roleOf(activeOrg.id, user.id)
-      : null;
-    return { user, activeOrg, appRole };
+    const appRoles = activeOrg
+      ? (memoryOrganizationStore.rolesOf(activeOrg.id, user.id) ?? [])
+      : [];
+    const appRole = appRoles[0] ?? null;
+    return { user, activeOrg, appRoles, appRole };
   }
 
   async requireSession(): Promise<AppSession> {

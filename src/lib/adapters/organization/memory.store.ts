@@ -91,21 +91,34 @@ class MemoryOrganizationStore {
     return [...(this.members.get(orgId) ?? [])];
   }
 
+  rolesOf(orgId: string, userId: string): AppRole[] | null {
+    const m = this.members.get(orgId)?.find((mm) => mm.userId === userId);
+    return m ? [...m.appRoles] : null;
+  }
+
+  /** @deprecated Use rolesOf(). Kept for legacy call sites. */
   roleOf(orgId: string, userId: string): AppRole | null {
-    return this.members.get(orgId)?.find((m) => m.userId === userId)?.appRole ?? null;
+    return this.rolesOf(orgId, userId)?.[0] ?? null;
   }
 
   upsertMember(
     orgId: string,
     userId: string,
-    appRole: AppRole,
+    appRoles: AppRole | AppRole[],
     status: OrgMember["status"],
   ): OrgMember {
+    const roles = Array.from(
+      new Set<AppRole>(Array.isArray(appRoles) ? appRoles : [appRoles]),
+    );
+    if (roles.length === 0) {
+      throw new Error("upsertMember requires at least one AppRole");
+    }
     const arr = this.members.get(orgId) ?? [];
     const user = this.users.get(userId);
     const existing = arr.find((m) => m.userId === userId);
     if (existing) {
-      existing.appRole = appRole;
+      existing.appRoles = roles;
+      existing.appRole = roles[0];
       existing.status = status;
       existing.lastActiveAt = new Date().toISOString();
       return existing;
@@ -116,7 +129,8 @@ class MemoryOrganizationStore {
       email: user?.email ?? "",
       displayName: user?.displayName ?? null,
       imageUrl: user?.imageUrl ?? null,
-      appRole,
+      appRoles: roles,
+      appRole: roles[0],
       status,
       walletAddress: user?.primaryWallet ?? null,
       joinedAt: new Date().toISOString(),
@@ -139,11 +153,15 @@ class MemoryOrganizationStore {
 
   createInvite(orgId: string, invitedByUserId: string, input: InviteInput): Invite {
     const arr = this.invites.get(orgId) ?? [];
+    const appRoles = Array.from(
+      new Set<AppRole>([input.appRole, ...(input.appRoles ?? [])]),
+    );
     const invite: Invite = {
       id: nextId("inv"),
       orgId,
       email: input.email.toLowerCase(),
       appRole: input.appRole,
+      appRoles,
       status: "pending",
       invitedBy: invitedByUserId,
       createdAt: new Date().toISOString(),
