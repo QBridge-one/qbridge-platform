@@ -39,10 +39,21 @@ export interface OrganizationPort {
   revokeInvite(orgId: string, inviteId: string): Promise<void>;
 
   // ── Membership ───────────────────────────────────────────
+  /** @deprecated Use setMemberRoles. Sets the primary role to a single
+   *  value (replaces appRoles with [appRole]). Kept for back-compat. */
   updateMemberRole(
     orgId: string,
     userId: string,
     appRole: AppRole,
+  ): Promise<OrgMember>;
+  /** Replace the full set of off-chain roles for a member. The Clerk
+   *  coarse role (admin/member) is derived from whether any role in
+   *  the set ends with "_admin". Throws if any role's plane doesn't
+   *  match the org's plane. */
+  setMemberRoles(
+    orgId: string,
+    userId: string,
+    appRoles: AppRole[],
   ): Promise<OrgMember>;
   removeMember(orgId: string, userId: string): Promise<void>;
 }

@@ -4,6 +4,7 @@
 // ============================================================
 
 import type { Address } from "@/lib/core/types";
+import type { AppRole } from "@/lib/core/identity.types";
 
 export type MemberStatus = "active" | "invited" | "suspended";
 
@@ -36,6 +37,10 @@ export interface TeamMember {
   displayName: string;
   status: MemberStatus;
   platformRole: PlatformRole;
+  /** Granular off-chain roles held by this member. Source of truth for
+   *  the permission matrix in the dashboard. Never empty for an active
+   *  member (baseline at minimum). */
+  appRoles?: AppRole[];
   walletAddress: Address | null;
   joinedAt: string;
   /** ISO timestamp or null (e.g. invited, never active) */

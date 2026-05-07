@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { TeamMember, ChainRoleKey, TeamOnChainRoleDef } from "@/types/team";
 import { CHAIN_ROLE_BADGE_CLASS, CHAIN_ROLE_DEFS } from "@/lib/mock/team";
+import { APP_ROLE_LABELS } from "@/lib/core/identity.types";
 import { cn } from "@/lib/utils";
 
 function activeChainKeys(m: TeamMember): ChainRoleKey[] {
@@ -44,7 +45,7 @@ export function MemberTable({
               Status
             </th>
             <th className="w-[13%] px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Platform
+              Role
             </th>
             <th className="w-[30%] px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Chain roles
@@ -83,7 +84,7 @@ export function MemberTable({
                   <StatusCell status={m.status} />
                 </td>
                 <td className="px-3 py-3 align-middle">
-                  <PlatformBadge role={m.platformRole} />
+                  <PlatformBadge member={m} />
                 </td>
                 <td className="px-3 py-3 align-middle">
                   <ChainRolesCell
@@ -172,8 +173,49 @@ function StatusCell({ status }: { status: TeamMember["status"] }) {
   );
 }
 
-function PlatformBadge({ role }: { role: TeamMember["platformRole"] }) {
-  if (role === "admin") {
+function PlatformBadge({ member }: { member: TeamMember }) {
+  // Prefer the granular off-chain role set when present. Show the
+  // primary role label (first non-baseline if available) plus a
+  // "+N" overflow when the user has multiple. Fall back to the
+  // legacy admin/member chip when no appRoles are set.
+  const appRoles = member.appRoles ?? [];
+  const isAdminLike = (r: string) => r.endsWith("_admin");
+  const isBaseline = (r: string) => r === "issuer_member" || r === "ops_member";
+
+  if (appRoles.length > 0) {
+    // Pick the most informative role to show first.
+    const sorted = [...appRoles].sort((a, b) => {
+      if (isAdminLike(a) && !isAdminLike(b)) return -1;
+      if (isAdminLike(b) && !isAdminLike(a)) return 1;
+      if (isBaseline(a) && !isBaseline(b)) return 1;
+      if (isBaseline(b) && !isBaseline(a)) return -1;
+      return a.localeCompare(b);
+    });
+    const primary = sorted[0];
+    const extra = sorted.length - 1;
+    const isAdmin = isAdminLike(primary);
+    return (
+      <span className="flex flex-wrap items-center gap-1">
+        <Badge
+          className={cn(
+            "text-xs font-medium",
+            isAdmin
+              ? "border-transparent bg-violet-200 text-violet-950 dark:bg-violet-900/50 dark:text-violet-200"
+              : "border-transparent bg-muted text-foreground",
+          )}
+        >
+          {APP_ROLE_LABELS[primary]}
+        </Badge>
+        {extra > 0 && (
+          <Badge variant="secondary" className="text-[10px] font-medium">
+            +{extra}
+          </Badge>
+        )}
+      </span>
+    );
+  }
+
+  if (member.platformRole === "admin") {
     return (
       <Badge className="border-transparent bg-violet-200 text-xs font-medium text-violet-950 dark:bg-violet-900/50 dark:text-violet-200">
         Admin

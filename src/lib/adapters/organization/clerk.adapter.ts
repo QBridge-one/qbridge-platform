@@ -23,6 +23,7 @@ import type {
   OrgMember,
 } from "../../core/identity.types";
 import {
+  forbidden,
   inviteAlreadyExists,
   inviteNotFound,
   membershipNotFound,
@@ -216,21 +217,47 @@ class ClerkOrganizationAdapter implements OrganizationPort {
     userId: string,
     appRole: AppRole,
   ): Promise<OrgMember> {
+    return this.setMemberRoles(orgId, userId, [appRole]);
+  }
+
+  async setMemberRoles(
+    orgId: string,
+    userId: string,
+    appRoles: AppRole[],
+  ): Promise<OrgMember> {
+    if (appRoles.length === 0) {
+      throw forbidden("At least one app role is required.");
+    }
     const cc = await clerkClient();
+    const org = await cc.organizations
+      .getOrganization({ organizationId: orgId })
+      .catch(() => null);
+    if (!org) throw orgNotFound(orgId);
+    const kind = mapKindFromMetadata(org.publicMetadata);
+    // plane sanity: every role must belong to this org's plane.
+    const wantsOps = kind === "ops";
+    for (const r of appRoles) {
+      const rIsOps = r.startsWith("ops_");
+      if (rIsOps !== wantsOps) {
+        throw forbidden(`Role "${r}" does not belong to a ${kind} workspace.`);
+      }
+    }
+    const dedupedRoles = Array.from(new Set(appRoles));
+    // Coarse Clerk role: admin if any granular role is admin-level.
+    const coarse = dedupedRoles.some((r) => r.endsWith("_admin"))
+      ? "org:admin"
+      : "org:member";
     try {
-      // Update Clerk's coarse role (admin/member) AND persist the
-      // granular AppRole(s) into membership.publicMetadata.appRoles.
-      // Clerk SDK exposes membership metadata via updateOrganizationMembershipMetadata.
       await cc.organizations.updateOrganizationMembership({
         organizationId: orgId,
         userId,
-        role: mapRoleToClerk(appRole),
+        role: coarse,
       });
       await cc.organizations
         .updateOrganizationMembershipMetadata({
           organizationId: orgId,
           userId,
-          publicMetadata: { appRole, appRoles: [appRole] },
+          publicMetadata: { appRole: dedupedRoles[0], appRoles: dedupedRoles },
         })
         .catch(() => {
           // Older Clerk SDKs may not expose this method; the coarse
@@ -243,8 +270,6 @@ class ClerkOrganizationAdapter implements OrganizationPort {
       throw err;
     }
     // Re-read to return the fresh OrgMember.
-    const org = await cc.organizations.getOrganization({ organizationId: orgId });
-    const kind = mapKindFromMetadata(org.publicMetadata);
     const list = await cc.organizations.getOrganizationMembershipList({ organizationId: orgId });
     const found = list.data.find((m) => m.publicUserData?.userId === userId);
     if (!found) throw membershipNotFound();

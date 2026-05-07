@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useWallet } from "@/lib/hooks/useWallet";
 import { useContracts } from "@/lib/hooks/useContracts";
 import type { TeamMember, ChainRoleKey, TeamInvitePayload, AvatarVariant, TeamOnChainRoleDef } from "@/types/team";
+import type { AppRole } from "@/lib/core/identity.types";
 import { cn } from "@/lib/utils";
 
 const AVATAR_ROTATION: AvatarVariant[] = ["blue", "purple", "teal", "amber", "gray"];
@@ -76,15 +77,27 @@ export function TeamAccessPage({
         const data = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(data.error ?? "Invite failed");
       }
-      const data = (await res.json()) as { id?: string };
+      const data = (await res.json()) as {
+        id?: string;
+        appRole?: AppRole;
+        appRoles?: AppRole[];
+        platformRole?: "admin" | "member";
+      };
       const id = data.id ?? `tm-${crypto.randomUUID()}`;
       const variant = AVATAR_ROTATION[members.length % AVATAR_ROTATION.length];
+      const appRoles =
+        data.appRoles && data.appRoles.length > 0
+          ? data.appRoles
+          : data.appRole
+            ? [data.appRole]
+            : undefined;
       const newMember: TeamMember = {
         id,
         email: payload.email,
         displayName: payload.email,
         status: "invited",
-        platformRole: payload.platformRole,
+        platformRole: data.platformRole ?? payload.platformRole,
+        appRoles,
         walletAddress: null,
         joinedAt: new Date().toISOString(),
         lastActiveAt: null,
@@ -96,20 +109,39 @@ export function TeamAccessPage({
     [members.length],
   );
 
-  const handleRemove = useCallback(async (memberId: string) => {
-    setListError(null);
-    try {
-      const res = await fetch(`/api/team/${encodeURIComponent(memberId)}`, { method: "DELETE" });
-      if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error ?? "Remove failed");
+  const handleRemove = useCallback(
+    async (memberId: string) => {
+      setListError(null);
+      // Branch: invited rows carry an invite id (not a user id), so
+      // they must revoke through the invite endpoint. Active members
+      // route to the legacy /api/team/[id] remove endpoint.
+      const target = members.find((m) => m.id === memberId);
+      const path =
+        target?.status === "invited"
+          ? `/api/team/invite/${encodeURIComponent(memberId)}`
+          : `/api/team/${encodeURIComponent(memberId)}`;
+      try {
+        const res = await fetch(path, { method: "DELETE" });
+        if (!res.ok) {
+          const data = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(
+            data.error ?? (target?.status === "invited" ? "Revoke failed" : "Remove failed"),
+          );
+        }
+        setMembers((prev) => prev.filter((m) => m.id !== memberId));
+      } catch (e) {
+        setListError(
+          e instanceof Error
+            ? e.message
+            : target?.status === "invited"
+              ? "Revoke failed"
+              : "Remove failed",
+        );
+        throw e;
       }
-      setMembers((prev) => prev.filter((m) => m.id !== memberId));
-    } catch (e) {
-      setListError(e instanceof Error ? e.message : "Remove failed");
-      throw e;
-    }
-  }, []);
+    },
+    [members],
+  );
 
   const handleUpdateMember = useCallback((id: string, patch: Partial<TeamMember>) => {
     setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
@@ -128,6 +160,25 @@ export function TeamAccessPage({
           ? { ...cur, chainRoles: { ...cur.chainRoles, [roleKey]: checked } }
           : cur,
       );
+    },
+    [],
+  );
+
+  // Persist the granular off-chain role set for a member. Calls the
+  // PATCH endpoint with `appRoles[]`; on success the local state is
+  // updated by `handleUpdateMember` (called from inside the sheet).
+  // Throws on error so the sheet's <AppRolesSection> can surface it.
+  const handleAppRolesChange = useCallback(
+    async (memberId: string, appRoles: AppRole[]) => {
+      const res = await fetch(`/api/team/members/${encodeURIComponent(memberId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appRoles }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? "Failed to update roles");
+      }
     },
     [],
   );
@@ -200,6 +251,7 @@ export function TeamAccessPage({
         chainId={chainId}
         onUpdateMember={canManage ? handleUpdateMember : () => {}}
         onChainRoleChange={canManage ? handleChainRoleChange : () => {}}
+        onAppRolesChange={canManage ? handleAppRolesChange : undefined}
         onRemoveMember={
           canManage
             ? handleRemove

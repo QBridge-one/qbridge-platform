@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
 import { CheckCircle2, ExternalLink, Loader2, X } from "lucide-react";
 import {
@@ -17,6 +17,7 @@ import { MemberAvatar } from "./MemberAvatar";
 import { CHAIN_ROLE_BADGE_CLASS, CHAIN_ROLE_DEFS } from "@/lib/mock/team";
 import type { TeamMember, ChainRoleKey, TeamOnChainRoleDef } from "@/types/team";
 import type { Address, Hex } from "@/lib/core/types";
+import { APP_ROLES, APP_ROLE_LABELS, type AppRole } from "@/lib/core/identity.types";
 import {
   useGrantRole as useTokenGrantRole,
   useRevokeRole as useTokenRevokeRole,
@@ -71,6 +72,8 @@ interface TeamMemberSheetProps {
   onUpdateMember: (id: string, patch: Partial<TeamMember>) => void;
   onChainRoleChange: (memberId: string, roleKey: ChainRoleKey, checked: boolean) => void;
   onRemoveMember: (id: string) => Promise<void>;
+  /** Persist a new app-role set for this member. Returns when persisted. */
+  onAppRolesChange?: (memberId: string, appRoles: AppRole[]) => Promise<void>;
   /** Token = issuer TokenAccessManager; platform = QBridge PlatformAccessManager (ops). */
   accessManager?: "token" | "platform";
   roleDefs?: ReadonlyArray<TeamOnChainRoleDef>;
@@ -86,6 +89,7 @@ export function TeamMemberSheet({
   onUpdateMember,
   onChainRoleChange,
   onRemoveMember,
+  onAppRolesChange,
   accessManager = "token",
   roleDefs = CHAIN_ROLE_DEFS,
   roleBadgeClass = CHAIN_ROLE_BADGE_CLASS,
@@ -200,7 +204,15 @@ export function TeamMemberSheet({
               </Alert>
             )}
 
-            <section className="space-y-3">
+            <AppRolesSection
+              member={member}
+              accessManager={accessManager}
+              isSelf={isSelf}
+              onAppRolesChange={onAppRolesChange}
+              onLocalUpdate={(roles) => onUpdateMember(member.id, { appRoles: roles })}
+            />
+
+            <section className="mt-6 space-y-3">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Platform access
               </p>
@@ -215,6 +227,10 @@ export function TeamMemberSheet({
                   aria-label="Platform admin"
                 />
               </div>
+              <p className="text-xs text-muted-foreground">
+                Coarse Clerk role (admin / member). Auto-derived from the
+                workspace roles above — granular roles are the source of truth.
+              </p>
             </section>
 
             <section className="mt-6 space-y-3">
@@ -485,6 +501,167 @@ function TokenChainRoleToggleRow({
         onDismiss={() => setConfirmedTxHash(null)}
       />
     </div>
+  );
+}
+
+// ─── App-roles (off-chain RBAC) section ─────────────────────────────
+// Lets a workspace/ops admin grant or revoke granular off-chain roles
+// for a member. This is a vendor-agnostic call (PATCH the membership);
+// it does NOT touch the chain. The chain-roles section below is what
+// updates the AccessManager contract.
+
+const ISSUER_ROLE_OPTIONS = APP_ROLES.filter((r) => r.startsWith("issuer_"));
+const OPS_ROLE_OPTIONS = APP_ROLES.filter((r) => r.startsWith("ops_"));
+
+const APP_ROLE_DESCRIPTIONS: Record<AppRole, string> = {
+  issuer_admin: "Full workspace control — manage team, settings, all assets and offerings.",
+  issuer_compliance: "Approve investors / offerings, freeze accounts, run KYC reviews and reports.",
+  issuer_dealer: "Onboard prospective investors. Read cap table, no compliance authority.",
+  issuer_operations: "Day-to-day ops — propose distributions, manage offerings lifecycle.",
+  issuer_property_manager: "Edit asset / property data. Read cap table, no investor actions.",
+  issuer_auditor: "Read-only — cap table, reports, audit exports.",
+  issuer_member: "Baseline workspace member — read-only dashboard access.",
+  ops_admin: "Full ops control — team, settings, contracts, all platform actions.",
+  ops_compliance: "Platform compliance — approve issuers, freeze investors, audit exports.",
+  ops_onboarding: "Issuer onboarding / KYB review. No global enforcement.",
+  ops_support: "Read-only support — view investor / issuer data, no mutations.",
+  ops_engineer: "Platform engineering — feature flags, contract deploys, audit exports.",
+  ops_member: "Baseline ops member — read-only dashboard access.",
+};
+
+function AppRolesSection({
+  member,
+  accessManager,
+  isSelf,
+  onAppRolesChange,
+  onLocalUpdate,
+}: {
+  member: TeamMember;
+  accessManager: "token" | "platform";
+  isSelf: boolean;
+  onAppRolesChange?: (memberId: string, appRoles: AppRole[]) => Promise<void>;
+  onLocalUpdate: (roles: AppRole[]) => void;
+}) {
+  const planeOptions = accessManager === "platform" ? OPS_ROLE_OPTIONS : ISSUER_ROLE_OPTIONS;
+  const baseline: AppRole = accessManager === "platform" ? "ops_member" : "issuer_member";
+  const adminRole: AppRole = accessManager === "platform" ? "ops_admin" : "issuer_admin";
+
+  const current = useMemo<AppRole[]>(
+    () => (member.appRoles && member.appRoles.length > 0 ? member.appRoles : [baseline]),
+    [member.appRoles, baseline],
+  );
+
+  const [pending, setPending] = useState<AppRole | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const readOnly = !onAppRolesChange;
+
+  const persist = async (next: AppRole[]) => {
+    setError(null);
+    if (!onAppRolesChange) {
+      onLocalUpdate(next);
+      return;
+    }
+    try {
+      await onAppRolesChange(member.id, next);
+      onLocalUpdate(next);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update roles");
+    }
+  };
+
+  const handleToggle = async (role: AppRole, checked: boolean) => {
+    setPending(role);
+    try {
+      const set = new Set(current);
+      if (checked) set.add(role);
+      else set.delete(role);
+      // Always keep the baseline so a member never ends up role-less.
+      set.add(baseline);
+      // Stable order: baseline first, admin second, then alphabetical.
+      const next = [...set].sort((a, b) => {
+        if (a === baseline) return -1;
+        if (b === baseline) return 1;
+        if (a === adminRole) return -1;
+        if (b === adminRole) return 1;
+        return a.localeCompare(b);
+      });
+      await persist(next);
+    } finally {
+      setPending(null);
+    }
+  };
+
+  return (
+    <section className="space-y-2">
+      <div className="flex items-baseline justify-between">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {accessManager === "platform" ? "Ops access" : "Workspace access"}
+        </p>
+        <p className="text-[10px] text-muted-foreground">
+          {current.length} role{current.length === 1 ? "" : "s"}
+        </p>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Off-chain dashboard permissions. These don&apos;t grant on-chain
+        authority — that&apos;s what the chain-roles list below is for.
+      </p>
+      {error && (
+        <Alert variant="destructive" className="my-2">
+          <AlertDescription className="text-xs">{error}</AlertDescription>
+        </Alert>
+      )}
+      <div className="rounded-md border border-border bg-card">
+        {planeOptions.map((role) => {
+          const checked = current.includes(role);
+          const isBaseline = role === baseline;
+          const isAdmin = role === adminRole;
+          // Disable: read-only, baseline (always on), self trying to drop their own admin,
+          // or while another toggle on this row is in flight.
+          const disabled =
+            readOnly ||
+            isBaseline ||
+            (isSelf && isAdmin && checked) ||
+            pending === role;
+          return (
+            <div
+              key={role}
+              className="flex items-start justify-between gap-3 border-b border-border px-3 py-2 last:border-b-0"
+            >
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium">{APP_ROLE_LABELS[role]}</span>
+                  {isBaseline && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      Baseline
+                    </Badge>
+                  )}
+                  {isAdmin && (
+                    <Badge className="border-transparent bg-violet-200 text-[10px] text-violet-950 dark:bg-violet-900/50 dark:text-violet-200">
+                      Admin
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {APP_ROLE_DESCRIPTIONS[role]}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {pending === role && (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-hidden />
+                )}
+                <Switch
+                  checked={checked}
+                  disabled={disabled}
+                  onCheckedChange={(c) => void handleToggle(role, c)}
+                  aria-label={`Toggle ${APP_ROLE_LABELS[role]}`}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

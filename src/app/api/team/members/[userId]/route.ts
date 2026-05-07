@@ -13,9 +13,13 @@ import type { Permission } from "@/lib/auth/permissions";
 
 const APP_ROLE_ENUM = z.enum(APP_ROLES as [AppRole, ...AppRole[]]);
 
-const RoleSchema = z.object({
-  appRole: APP_ROLE_ENUM,
-});
+// Accept either the legacy single-role variant or the new multi-role
+// variant. Both go through setMemberRoles on the adapter; the singular
+// path becomes [appRole].
+const RoleSchema = z.union([
+  z.object({ appRoles: z.array(APP_ROLE_ENUM).min(1) }),
+  z.object({ appRole: APP_ROLE_ENUM }),
+]);
 
 const CHANGE: Record<"ops" | "issuer", Permission> = {
   ops: "ops:team:change_role",
@@ -43,17 +47,19 @@ export async function PATCH(
         { status: 400 },
       );
     }
-    const updated = await organizationAdapter.updateMemberRole(
+    const appRoles =
+      "appRoles" in parsed.data ? parsed.data.appRoles : [parsed.data.appRole];
+    const updated = await organizationAdapter.setMemberRoles(
       session.activeOrg.id,
       userId,
-      parsed.data.appRole,
+      appRoles,
     );
     await auditLogAdapter.append({
       orgId: session.activeOrg.id,
       actorUserId: session.user.id,
       action: "member.role_changed",
       target: userId,
-      payload: { appRole: parsed.data.appRole },
+      payload: { appRoles },
     });
     return NextResponse.json({ ok: true, member: updated });
   } catch (err) {

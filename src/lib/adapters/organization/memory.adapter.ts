@@ -79,10 +79,31 @@ class MemoryOrganizationAdapter implements OrganizationPort {
     userId: string,
     appRole: AppRole,
   ): Promise<OrgMember> {
-    if (!memoryOrganizationStore.getOrg(orgId)) throw orgNotFound(orgId);
-    const existing = memoryOrganizationStore.roleOf(orgId, userId);
-    if (existing === null) throw membershipNotFound();
-    return memoryOrganizationStore.upsertMember(orgId, userId, appRole, "active");
+    return this.setMemberRoles(orgId, userId, [appRole]);
+  }
+
+  async setMemberRoles(
+    orgId: string,
+    userId: string,
+    appRoles: AppRole[],
+  ): Promise<OrgMember> {
+    const org = memoryOrganizationStore.getOrg(orgId);
+    if (!org) throw orgNotFound(orgId);
+    if (memoryOrganizationStore.rolesOf(orgId, userId) === null) {
+      throw membershipNotFound();
+    }
+    if (appRoles.length === 0) {
+      throw forbidden("At least one app role is required.");
+    }
+    // plane sanity: every role must belong to this org's plane.
+    const wantsOps = org.kind === "ops";
+    for (const r of appRoles) {
+      const rIsOps = r.startsWith("ops_");
+      if (rIsOps !== wantsOps) {
+        throw forbidden(`Role "${r}" does not belong to a ${org.kind} workspace.`);
+      }
+    }
+    return memoryOrganizationStore.upsertMember(orgId, userId, appRoles, "active");
   }
 
   async removeMember(orgId: string, userId: string): Promise<void> {
