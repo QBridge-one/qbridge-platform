@@ -1,30 +1,50 @@
 // ============================================================
 // lib/container.ts
 //
-// Dependency injection container.
-// THIS is the only place that imports concrete adapters.
+// Client-safe DI container. Picks the active WalletPort
+// implementation based on NEXT_PUBLIC_WALLET_PROVIDER and assembles
+// the application services that depend on it.
+//
+// THIS is the only place that imports concrete wallet adapters.
 // Everything else imports port interfaces or this container.
 //
-// To swap Web3Auth → Alchemy:
-//   1. Change walletAdapter from web3AuthAdapter to alchemyAdapter
-//   2. Change gasPolicyAdapter from noSponsorshipAdapter to alchemyGasManagerAdapter
-//   3. Nothing else changes.
+// ─── Replaceability ─────────────────────────────────────────
+// To swap Web3Auth → Alchemy (or Turnkey, or any other WalletPort
+// implementation):
+//
+//   1. Implement the adapter under src/lib/adapters/wallet/.
+//      (alchemy.adapter.ts is already stubbed for ERC-4337 smart
+//       accounts — fill it in following its TODO comments.)
+//   2. Add the new branch to the WALLET_PROVIDER switch below.
+//   3. In src/lib/hooks/useWallet.ts, add an internal hook
+//      implementation for the new provider and gate the export
+//      on the same env var.
+//   4. In src/components/providers/, mount the provider's React
+//      tree (e.g. an Alchemy AccountProvider) instead of (or
+//      alongside) <Web3AuthProviders>.
+//   5. (Optional) update gasPolicyAdapter / multisigAdapter if the
+//      new wallet supports gas sponsorship or multisig flows that
+//      the old one didn't.
+//
+// Identity / org / auth-webhook / wallet-link / audit-log adapters
+// are server-only — see container.server.ts.
 // ============================================================
 
 import { web3AuthAdapter } from "./adapters/wallet/web3auth.adapter";
-// import { alchemyAdapter } from "./adapters/wallet/alchemy.adapter"; // future
+// import { alchemyAdapter } from "./adapters/wallet/alchemy.adapter";   // when implemented
+// import { turnkeyAdapter } from "./adapters/wallet/turnkey.adapter";   // when implemented
 
 import { viemAdapter } from "./adapters/blockchain/viem.adapter";
 
 import {
   noSponsorshipAdapter,
-  // AlchemyGasManagerAdapter,   // future
+  // AlchemyGasManagerAdapter,
 } from "./adapters/gas-policy/adapters";
 
 import {
   noMultisigAdapter,
   onChainComplianceAdapter,
-  // SafeAdapter,                 // future
+  // SafeAdapter,
 } from "./adapters/compliance/adapters";
 
 import { TransactionService } from "./services/transaction.service";
@@ -32,15 +52,27 @@ import { TransactionService } from "./services/transaction.service";
 import { memoryIntentAdapter } from "./adapters/intent/memory.adapter";
 import { viemBroadcastAdapter } from "./adapters/broadcast/viem-server.adapter";
 
-// ─── Active adapters ─────────────────────────────────────────
-// Change these lines only — nothing else in the codebase needs to change.
-//
-// NOTE: this file is client-safe. Identity / organization /
-// auth-webhook / wallet-link / audit-log adapters are server-only
-// (they use next/headers, server-only imports, or vendor SDKs that
-// pull in node:async_hooks). Those live in `./container.server.ts`.
+import type { WalletPort } from "./ports/wallet.port";
 
-export const walletAdapter = web3AuthAdapter;
+// ─── Wallet provider switch ──────────────────────────────────
+// NEXT_PUBLIC_ so it's available on the client.
+const WALLET_PROVIDER = (
+  process.env.NEXT_PUBLIC_WALLET_PROVIDER ?? "web3auth"
+).toLowerCase();
+
+function pickWalletAdapter(): WalletPort {
+  switch (WALLET_PROVIDER) {
+    // case "alchemy":
+    //   return alchemyAdapter;
+    // case "turnkey":
+    //   return turnkeyAdapter;
+    case "web3auth":
+    default:
+      return web3AuthAdapter;
+  }
+}
+
+export const walletAdapter: WalletPort = pickWalletAdapter();
 export const blockchainAdapter = viemAdapter;
 export const gasPolicyAdapter = noSponsorshipAdapter;
 export const multisigAdapter = noMultisigAdapter;
@@ -60,5 +92,7 @@ export const transactionService = new TransactionService({
 export type { WalletPort } from "./ports/wallet.port";
 export type { BlockchainPort } from "./ports/blockchain.port";
 
-/** Server routes + WalletStateSync — only these may use concrete adapter APIs beyond ports. */
+/** Server routes + WalletStateSync — only these may reach for the
+ *  concrete Web3Auth adapter (e.g. to inject the WagmiProvider
+ *  config). Everything else uses `walletAdapter` (the WalletPort). */
 export { memoryIntentAdapter, viemBroadcastAdapter, web3AuthAdapter };

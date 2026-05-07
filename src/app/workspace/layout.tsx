@@ -4,7 +4,7 @@
 // ============================================================
 
 import { WorkspaceSidebar } from "@/components/dashboard/workspace-sidebar";
-import { DashboardHeaderAccount } from "@/components/dashboard/dashboard-header-account";
+import { WalletStatus } from "@/components/wallet/wallet-status";
 import { IdentityControls } from "@/components/dashboard/identity-controls";
 import { Bell, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -66,8 +66,8 @@ export default async function WorkspaceLayout({
               <span className="sr-only">Notifications</span>
             </Button>
 
+            <WalletStatus linkedAddress={session.user.primaryWallet} />
             <IdentityControls />
-            <DashboardHeaderAccount />
           </div>
         </header>
 

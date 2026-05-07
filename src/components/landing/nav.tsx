@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { T } from "./shared";
-import { WalletButton } from "@/components/wallet/wallet-button";
+import { LandingNavCta } from "./landing-nav-cta";
 
 const NAV_LINKS = ["Platform", "Compliance", "Use Cases", "About"];
 
@@ -80,7 +80,7 @@ export function Nav() {
                 {l}
               </a>
             ))}
-            <WalletButton />
+            <LandingNavCta />
           </div>
 
           {/* Mobile: hamburger - visible only on mobile via CSS */}
@@ -192,7 +192,7 @@ export function Nav() {
             </a>
           ))}
           <div className="nav-wallet-wrap" style={{ marginTop: 16 }}>
-            <WalletButton />
+            <LandingNavCta />
           </div>
         </div>
       </>

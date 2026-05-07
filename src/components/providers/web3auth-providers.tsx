@@ -8,6 +8,7 @@ import {
   isWeb3AuthConfigured,
 } from "@/config/web3auth";
 import { WalletStateSync } from "@/components/providers/wallet-state-sync";
+import { WalletAutoDisconnect } from "@/components/providers/wallet-auto-disconnect";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ export function Web3AuthProviders({
       <QueryClientProvider client={queryClient}>
         <WagmiProvider>
           <WalletStateSync />
+          <WalletAutoDisconnect />
           {children}
         </WagmiProvider>
       </QueryClientProvider>

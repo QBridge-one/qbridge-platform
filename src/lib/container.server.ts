@@ -4,10 +4,27 @@
 // audit-log adapters. Imported by route handlers, server components,
 // services, and middleware. NEVER import from a client component.
 //
-// To swap Clerk → WorkOS:
-//   1. add adapters under src/lib/adapters/{identity,organization,…}/workos.adapter.ts
-//   2. extend the IDENTITY_PROVIDER switch below
-//   3. nothing else changes.
+// ─── Provider switches ──────────────────────────────────────
+//
+// IDENTITY_PROVIDER  = "memory" | "clerk"
+//   memory : in-process dev store; no IdP keys required
+//   clerk  : Clerk Organizations (requires CLERK_SECRET_KEY etc.)
+//
+// WALLET_PROVIDER    = "web3auth" | "alchemy" | "turnkey"
+//   web3auth : Web3Auth embedded EOA (current default)
+//   alchemy  : Alchemy Account Kit smart account (stubbed)
+//   turnkey  : Turnkey HSM-backed signer (not yet implemented)
+//
+// To swap wallet provider:
+//   1. Implement the new adapter under src/lib/adapters/wallet/.
+//   2. Add it to the WALLET_PROVIDER switch below.
+//   3. Update the corresponding *client* side in
+//      src/components/providers/ (e.g., add an Alchemy AccountProvider
+//      tree alongside web3auth-providers.tsx and pick which to mount).
+//   4. Update src/lib/hooks/useWallet.ts to add the new internal
+//      implementation and gate it on the provider.
+//   5. Nothing else in /app or /components needs to change — the
+//      WalletPort interface is the stable contract.
 // ============================================================
 
 import "server-only";
@@ -19,12 +36,10 @@ import { clerkOrganizationAdapter } from "./adapters/organization/clerk.adapter"
 import { memoryAuthWebhookAdapter } from "./adapters/auth-webhook/memory.adapter";
 import { clerkAuthWebhookAdapter } from "./adapters/auth-webhook/clerk.adapter";
 import { memoryWalletLinkAdapter } from "./adapters/wallet-link/memory.adapter";
+import { clerkWalletLinkAdapter } from "./adapters/wallet-link/clerk.adapter";
 import { memoryAuditLogAdapter } from "./adapters/audit-log/memory.adapter";
 
-// Identity provider switch — env-driven so the same build can run
-// against memory (dev) or Clerk (prod) without recompiling.
-//   IDENTITY_PROVIDER=memory  → in-process store, no IdP required
-//   IDENTITY_PROVIDER=clerk   → Clerk SDK (requires CLERK_* env vars)
+// ─── Identity provider switch ────────────────────────────────
 const IDENTITY_PROVIDER = (process.env.IDENTITY_PROVIDER ?? "memory").toLowerCase();
 
 export const identityAdapter =
@@ -36,7 +51,26 @@ export const organizationAdapter =
 export const authWebhookAdapter =
   IDENTITY_PROVIDER === "clerk" ? clerkAuthWebhookAdapter : memoryAuthWebhookAdapter;
 
-export const walletLinkAdapter = memoryWalletLinkAdapter;
+// Wallet linking persists the SIWE-verified address into the same
+// store the IdentityPort reads `primaryWallet` from. Keep these
+// two in sync — if you swap identity providers, swap the matching
+// wallet-link adapter as well.
+export const walletLinkAdapter =
+  IDENTITY_PROVIDER === "clerk" ? clerkWalletLinkAdapter : memoryWalletLinkAdapter;
+
+// ─── Wallet provider switch ──────────────────────────────────
+// The wallet-link / audit / identity adapters above are vendor-
+// agnostic with respect to *which* embedded wallet a user has —
+// they only see addresses and signatures. The wallet provider
+// itself lives in the client tree (see useWallet.ts and the
+// providers under components/providers/). This export documents
+// which provider is active for downstream services that need to
+// know (e.g. "is this a smart account?" affects gas-policy).
+export const WALLET_PROVIDER = (process.env.WALLET_PROVIDER ?? "web3auth").toLowerCase() as
+  | "web3auth"
+  | "alchemy"
+  | "turnkey";
+
 export const auditLogAdapter = memoryAuditLogAdapter;
 
 export type { IdentityPort } from "./ports/identity.port";
