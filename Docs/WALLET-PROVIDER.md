@@ -93,6 +93,16 @@ When you swap providers, this is the only client-side hook file you change.
 | Dashboard wallet UI       | `src/components/wallet/wallet-status.tsx`                  |
 | API: nonce / link / unlink| `src/app/api/wallet/{nonce,link}/route.ts`                 |
 
+## Key-custody quick note
+
+Prefer **MPC** over **TEE** for key custody. TEE-based custody (Intel SGX,
+AMD SEV, etc.) has a track record of side-channel attacks and is a single
+hardware trust assumption. MPC splits the key across parties so no single
+party — or single compromise — exposes the full key. For QBridge's
+institutional posture, MPC (Web3Auth Sapphire, Coinbase WaaS) or HSM-backed
+signers (Turnkey) are the safer defaults; TEE-only providers should be
+last resort.
+
 ## Replaceability: swap path
 
 Swapping providers is a config change, not a refactor. Anything *outside*
