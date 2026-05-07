@@ -1,15 +1,20 @@
 // ============================================================
 // app/ops/layout.tsx — QBridge internal ops shell (/ops)
+// Server component. Performs auth + plane check before render.
 // ============================================================
 
 import { OpsSidebar } from "@/components/dashboard/ops-sidebar";
 import { DashboardHeaderAccount } from "@/components/dashboard/dashboard-header-account";
+import { IdentityControls } from "@/components/dashboard/identity-controls";
 import { Bell, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth/server";
+import { can } from "@/lib/auth/permissions";
 
 export const metadata: Metadata = {
   title: {
@@ -18,17 +23,24 @@ export const metadata: Metadata = {
   },
 };
 
-export default function OpsLayout({
+export default async function OpsLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await getSession();
+  if (!session) redirect("/sign-in");
+  if (!session.activeOrg) redirect("/select-workspace");
+  if (session.activeOrg.kind !== "ops") redirect("/select-workspace");
+  if (!can(session.appRole, "ops:view")) redirect("/select-workspace");
+
   return (
     <div className="flex min-h-screen bg-background">
       <OpsSidebar
         platformRole="ADMIN"
         walletAddress="0xC3D4533949D52ee67447c87F40c8b98092FD1dF1"
-        operatorName="QBridge Operations"
+        operatorName={session.activeOrg.name ?? "QBridge Operations"}
+        appRole={session.appRole}
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
@@ -54,6 +66,7 @@ export default function OpsLayout({
               <span className="sr-only">Notifications</span>
             </Button>
 
+            <IdentityControls />
             <DashboardHeaderAccount />
           </div>
         </header>

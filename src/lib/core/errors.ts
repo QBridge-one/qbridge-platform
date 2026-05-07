@@ -91,6 +91,56 @@ export function contractCallFailed(fn: string, reason?: string): DomainError {
   );
 }
 
+// ─── Identity / org / invite errors ──────────────────────────
+export function unauthenticated(): DomainError {
+  return new DomainError("UNAUTHENTICATED", "Sign in required to continue.");
+}
+
+export function forbidden(reason?: string): DomainError {
+  return new DomainError(
+    "FORBIDDEN",
+    reason ? `Forbidden: ${reason}` : "You do not have permission for this action.",
+  );
+}
+
+export function orgNotFound(orgId: string): DomainError {
+  return new DomainError("ORG_NOT_FOUND", `Organization ${orgId} was not found.`);
+}
+
+export function membershipNotFound(): DomainError {
+  return new DomainError(
+    "MEMBERSHIP_NOT_FOUND",
+    "You are not a member of this organization.",
+  );
+}
+
+export function inviteNotFound(inviteId: string): DomainError {
+  return new DomainError("INVITE_NOT_FOUND", `Invite ${inviteId} was not found.`);
+}
+
+export function inviteAlreadyExists(email: string): DomainError {
+  return new DomainError(
+    "INVITE_ALREADY_EXISTS",
+    `An invite for ${email} already exists.`,
+  );
+}
+
+export function walletLinkInvalid(reason?: string): DomainError {
+  return new DomainError(
+    "WALLET_LINK_INVALID",
+    reason
+      ? `Wallet link verification failed: ${reason}`
+      : "Wallet link verification failed.",
+  );
+}
+
+export function webhookSignatureInvalid(): DomainError {
+  return new DomainError(
+    "WEBHOOK_SIGNATURE_INVALID",
+    "Webhook signature verification failed.",
+  );
+}
+
 // ─── Error normalization ─────────────────────────────────────
 // Converts raw errors from wagmi/viem/alchemy into DomainErrors.
 // Call this in every adapter's catch block.

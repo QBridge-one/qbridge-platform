@@ -1,0 +1,243 @@
+// ============================================================
+// lib/adapters/organization/clerk.adapter.ts
+// Clerk implementation of OrganizationPort.
+// Activated when IDENTITY_PROVIDER=clerk.
+//
+// Mapping conventions:
+//   - Clerk Organization ↔ AppOrg
+//   - publicMetadata.kind: "ops" | "issuer"  (we set this on create)
+//   - publicMetadata.issuerId: string         (KYB record id)
+//   - role "org:admin" / "org:member" → AppRole via mapRoleFromClerk
+// ============================================================
+
+import "server-only";
+
+import { clerkClient } from "@clerk/nextjs/server";
+import type { OrganizationPort } from "../../ports/organization.port";
+import type {
+  AppOrg,
+  AppRole,
+  Invite,
+  InviteInput,
+  OrgKind,
+  OrgMember,
+} from "../../core/identity.types";
+import {
+  inviteAlreadyExists,
+  inviteNotFound,
+  membershipNotFound,
+  orgNotFound,
+} from "../../core/errors";
+import { mapRoleFromClerk, mapRoleToClerk } from "../identity/clerk.adapter";
+
+type ClerkOrg = Awaited<ReturnType<Awaited<ReturnType<typeof clerkClient>>["organizations"]["getOrganization"]>>;
+type ClerkMember = Awaited<
+  ReturnType<Awaited<ReturnType<typeof clerkClient>>["organizations"]["getOrganizationMembershipList"]>
+>["data"][number];
+type ClerkInvite = Awaited<
+  ReturnType<Awaited<ReturnType<typeof clerkClient>>["organizations"]["getOrganizationInvitationList"]>
+>["data"][number];
+
+function mapKindFromMetadata(meta: unknown): "ops" | "issuer" {
+  if (meta && typeof meta === "object" && (meta as { kind?: unknown }).kind === "ops") return "ops";
+  return "issuer";
+}
+
+function pickIssuerId(meta: unknown): string | null {
+  if (meta && typeof meta === "object" && "issuerId" in meta) {
+    const v = (meta as { issuerId?: unknown }).issuerId;
+    if (typeof v === "string") return v;
+  }
+  return null;
+}
+
+function mapOrg(o: ClerkOrg): AppOrg {
+  const kind = mapKindFromMetadata(o.publicMetadata);
+  return {
+    id: o.id,
+    authOrgId: o.id,
+    name: o.name,
+    slug: o.slug ?? o.id,
+    kind,
+    issuerId: pickIssuerId(o.publicMetadata),
+    createdAt: new Date(o.createdAt).toISOString(),
+  };
+}
+
+function mapMember(m: ClerkMember, kind: OrgKind): OrgMember {
+  const ud = m.publicUserData;
+  const id = ud?.userId ?? m.id;
+  return {
+    userId: id,
+    orgId: m.organization.id,
+    email: ud?.identifier ?? "",
+    displayName:
+      [ud?.firstName, ud?.lastName].filter(Boolean).join(" ") || (ud?.identifier ?? null),
+    imageUrl: ud?.imageUrl ?? null,
+    appRole: mapRoleFromClerk(m.role, kind),
+    status: "active",
+    walletAddress: null,
+    joinedAt: new Date(m.createdAt).toISOString(),
+    lastActiveAt: m.updatedAt ? new Date(m.updatedAt).toISOString() : null,
+  };
+}
+
+function mapInviteStatus(s: ClerkInvite["status"]): Invite["status"] {
+  if (s === "accepted") return "accepted";
+  if (s === "revoked") return "revoked";
+  if (s === "expired") return "expired";
+  return "pending";
+}
+
+function mapInvite(inv: ClerkInvite): Invite {
+  const meta = inv.publicMetadata as Record<string, unknown> | null | undefined;
+  const appRole = (meta?.appRole as AppRole | undefined) ?? "issuer_member";
+  return {
+    id: inv.id,
+    orgId: inv.organizationId,
+    email: inv.emailAddress,
+    appRole,
+    status: mapInviteStatus(inv.status),
+    invitedBy: "system",
+    createdAt: new Date(inv.createdAt).toISOString(),
+    acceptedAt: inv.status === "accepted" ? new Date(inv.updatedAt).toISOString() : null,
+  };
+}
+
+class ClerkOrganizationAdapter implements OrganizationPort {
+  async getOrg(orgId: string): Promise<AppOrg | null> {
+    const cc = await clerkClient();
+    try {
+      const o = await cc.organizations.getOrganization({ organizationId: orgId });
+      return mapOrg(o);
+    } catch {
+      return null;
+    }
+  }
+
+  async listForUser(userId: string): Promise<AppOrg[]> {
+    const cc = await clerkClient();
+    const list = await cc.users.getOrganizationMembershipList({ userId });
+    return list.data.map((m) => mapOrg(m.organization));
+  }
+
+  async listMembers(orgId: string): Promise<OrgMember[]> {
+    const cc = await clerkClient();
+    const org = await cc.organizations.getOrganization({ organizationId: orgId }).catch(() => null);
+    if (!org) throw orgNotFound(orgId);
+    const kind = mapKindFromMetadata(org.publicMetadata);
+    const list = await cc.organizations.getOrganizationMembershipList({ organizationId: orgId });
+    return list.data.map((m) => mapMember(m, kind));
+  }
+
+  async listInvites(orgId: string): Promise<Invite[]> {
+    const cc = await clerkClient();
+    const list = await cc.organizations.getOrganizationInvitationList({
+      organizationId: orgId,
+      status: ["pending"],
+    });
+    return list.data.map(mapInvite);
+  }
+
+  async createOrg(input: {
+    name: string;
+    slug?: string;
+    kind: OrgKind;
+    issuerId?: string | null;
+    creatorUserId: string;
+  }): Promise<AppOrg> {
+    const cc = await clerkClient();
+    const o = await cc.organizations.createOrganization({
+      name: input.name,
+      slug: input.slug,
+      createdBy: input.creatorUserId,
+      publicMetadata: { kind: input.kind, issuerId: input.issuerId ?? null },
+    });
+    return mapOrg(o);
+  }
+
+  async inviteMember(
+    orgId: string,
+    invitedByUserId: string,
+    input: InviteInput,
+  ): Promise<Invite> {
+    const cc = await clerkClient();
+    try {
+      const inv = await cc.organizations.createOrganizationInvitation({
+        organizationId: orgId,
+        inviterUserId: invitedByUserId,
+        emailAddress: input.email,
+        role: mapRoleToClerk(input.appRole),
+        redirectUrl: input.redirectUrl,
+        publicMetadata: { appRole: input.appRole },
+      });
+      return mapInvite(inv);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Clerk returns 422 with "duplicate_record" when an active invite exists.
+      if (/duplicate|already/i.test(msg)) throw inviteAlreadyExists(input.email);
+      throw err;
+    }
+  }
+
+  async revokeInvite(orgId: string, inviteId: string): Promise<void> {
+    const cc = await clerkClient();
+    try {
+      await cc.organizations.revokeOrganizationInvitation({
+        organizationId: orgId,
+        invitationId: inviteId,
+        // Clerk requires a requesting user id; we use the org's first admin
+        // server-side. For simplicity we pass an empty string and rely on
+        // the route handler to enforce auth (Clerk also accepts the call
+        // when invoked with a backend secret).
+        requestingUserId: "",
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/not.found|404/i.test(msg)) throw inviteNotFound(inviteId);
+      throw err;
+    }
+  }
+
+  async updateMemberRole(
+    orgId: string,
+    userId: string,
+    appRole: AppRole,
+  ): Promise<OrgMember> {
+    const cc = await clerkClient();
+    try {
+      await cc.organizations.updateOrganizationMembership({
+        organizationId: orgId,
+        userId,
+        role: mapRoleToClerk(appRole),
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/not.found|404/i.test(msg)) throw membershipNotFound();
+      throw err;
+    }
+    // Re-read to return the fresh OrgMember.
+    const org = await cc.organizations.getOrganization({ organizationId: orgId });
+    const kind = mapKindFromMetadata(org.publicMetadata);
+    const list = await cc.organizations.getOrganizationMembershipList({ organizationId: orgId });
+    const found = list.data.find((m) => m.publicUserData?.userId === userId);
+    if (!found) throw membershipNotFound();
+    return mapMember(found, kind);
+  }
+
+  async removeMember(orgId: string, userId: string): Promise<void> {
+    const cc = await clerkClient();
+    try {
+      await cc.organizations.deleteOrganizationMembership({
+        organizationId: orgId,
+        userId,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/not.found|404/i.test(msg)) throw membershipNotFound();
+      throw err;
+    }
+  }
+}
+
+export const clerkOrganizationAdapter = new ClerkOrganizationAdapter();

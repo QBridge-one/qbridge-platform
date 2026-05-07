@@ -1,44 +1,113 @@
+// ============================================================
+// POST   /api/team/invite     → invite a member to the active org
+// GET    /api/team/invite     → list pending invites (active org)
+// ============================================================
+
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { auditLogAdapter, organizationAdapter } from "@/lib/container.server";
+import { requireOrg, requirePermission } from "@/lib/auth/server";
+import { errorResponse } from "@/lib/auth/api";
+import type { AppRole } from "@/lib/core/identity.types";
+import type { Permission } from "@/lib/auth/permissions";
+
+const InviteSchema = z.object({
+  email: z.string().email().transform((s) => s.trim().toLowerCase()),
+  appRole: z.enum(["ops_admin", "ops_member", "issuer_admin", "issuer_member"]).optional(),
+  // Legacy fields kept for compatibility with the existing UI
+  platformRole: z.enum(["admin", "member"]).optional(),
+  role: z.enum(["admin", "member"]).optional(),
+});
+
+function resolveAppRole(
+  parsed: z.infer<typeof InviteSchema>,
+  orgKind: "ops" | "issuer",
+): AppRole {
+  if (parsed.appRole) return parsed.appRole;
+  const legacy = parsed.platformRole ?? parsed.role;
+  if (orgKind === "ops") {
+    return legacy === "admin" ? "ops_admin" : "ops_member";
+  }
+  return legacy === "admin" ? "issuer_admin" : "issuer_member";
+}
+
+const INVITE_PERM: Record<"ops" | "issuer", Permission> = {
+  ops: "ops:team:invite",
+  issuer: "workspace:team:invite",
+};
+
+const VIEW_PERM: Record<"ops" | "issuer", Permission> = {
+  ops: "ops:team:view",
+  issuer: "workspace:team:view",
+};
 
 /**
- * POST /api/team/invite
- * Body: { email: string, role: string }
- *
- * TODO: Integrate your auth provider (Auth0, Clerk, Cognito, etc.) to send
- * the invite email and persist the pending membership.
+ * Build the URL Clerk will redirect the invitee to AFTER they accept
+ * the invitation (sign up / sign in). We use the request's own origin
+ * so dev (`localhost:3000`), ngrok previews, and prod all work without
+ * touching env vars or the Clerk dashboard.
  */
+function resolveInviteRedirect(request: Request): string {
+  const explicit = process.env.NEXT_PUBLIC_APP_URL;
+  if (explicit) return new URL("/select-workspace", explicit).toString();
+  const origin = request.headers.get("origin");
+  if (origin) return new URL("/select-workspace", origin).toString();
+  // Fallback: derive from the request URL itself.
+  const u = new URL(request.url);
+  return `${u.protocol}//${u.host}/select-workspace`;
+}
+
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { email?: string; platformRole?: string; role?: string };
-    const email = typeof body.email === "string" ? body.email.trim() : "";
-    const platformRoleRaw =
-      typeof body.platformRole === "string" ? body.platformRole.trim().toLowerCase() : "";
-    const legacyRole = typeof body.role === "string" ? body.role.trim() : "";
-    const platformRole =
-      platformRoleRaw === "admin" || platformRoleRaw === "member"
-        ? platformRoleRaw
-        : legacyRole === "admin" || legacyRole === "member"
-          ? legacyRole
-          : "";
+    const base = await requireOrg();
+    const session = await requirePermission(INVITE_PERM[base.activeOrg.kind]);
 
-    if (!email || !platformRole) {
+    const body = await request.json();
+    const parsed = InviteSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "email and platformRole (admin | member) are required" },
+        { error: "Invalid body", details: parsed.error.flatten() },
         { status: 400 },
       );
     }
 
-    // TODO: authProvider.inviteMember({ email, platformRole })
-    const id = `invite-${crypto.randomUUID()}`;
+    const orgId = session.activeOrg.id;
+    const appRole = resolveAppRole(parsed.data, session.activeOrg.kind);
+    const redirectUrl = resolveInviteRedirect(request);
+
+    const invite = await organizationAdapter.inviteMember(
+      orgId,
+      session.user.id,
+      { email: parsed.data.email, appRole, redirectUrl },
+    );
+
+    await auditLogAdapter.append({
+      orgId,
+      actorUserId: session.user.id,
+      action: "invite.sent",
+      target: parsed.data.email,
+      payload: { inviteId: invite.id, appRole },
+    });
 
     return NextResponse.json({
       ok: true,
-      id,
-      email,
-      platformRole,
-      message: "Invite recorded (stub — connect auth provider)",
+      id: invite.id,
+      email: invite.email,
+      appRole: invite.appRole,
+      platformRole: appRole.endsWith("_admin") ? "admin" : "member",
     });
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  } catch (err) {
+    return errorResponse(err);
+  }
+}
+
+export async function GET() {
+  try {
+    const base = await requireOrg();
+    const session = await requirePermission(VIEW_PERM[base.activeOrg.kind]);
+    const invites = await organizationAdapter.listInvites(session.activeOrg.id);
+    return NextResponse.json({ ok: true, invites });
+  } catch (err) {
+    return errorResponse(err);
   }
 }

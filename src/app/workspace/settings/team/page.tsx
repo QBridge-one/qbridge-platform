@@ -1,9 +1,18 @@
-"use client";
+// ============================================================
+// /workspace/settings/team — server entry, computes RBAC + renders
+// the client TeamAccessPage with view/manage gates wired in.
+// ============================================================
 
 import { TeamAccessPage } from "@/components/team/TeamAccessPage";
 import { CHAIN_ROLE_BADGE_CLASS, CHAIN_ROLE_DEFS, MOCK_TEAM_MEMBERS } from "@/lib/mock/team";
+import { getSession } from "@/lib/auth/server";
+import { can } from "@/lib/auth/permissions";
 
-export default function WorkspaceTeamPage() {
+export default async function WorkspaceTeamPage() {
+  const session = await getSession();
+  const canInvite = can(session?.appRole ?? null, "workspace:team:invite");
+  const canManage = can(session?.appRole ?? null, "workspace:team:remove");
+
   return (
     <TeamAccessPage
       title="Access & Team"
@@ -12,6 +21,8 @@ export default function WorkspaceTeamPage() {
       accessManager="token"
       roleDefs={CHAIN_ROLE_DEFS}
       roleBadgeClass={CHAIN_ROLE_BADGE_CLASS}
+      canInvite={canInvite}
+      canManage={canManage}
     />
   );
 }

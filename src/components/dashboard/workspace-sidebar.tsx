@@ -31,6 +31,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useState } from "react";
+import { can, type Permission } from "@/lib/auth/permissions";
+import type { AppRole } from "@/lib/core/identity.types";
 
 interface NavItem {
   label: string;
@@ -39,6 +41,8 @@ interface NavItem {
   badge?: string | number;
   badgeVariant?: "default" | "destructive" | "secondary" | "outline";
   section?: string;
+  /** If set, item only renders when current appRole has this permission. */
+  requires?: Permission;
 }
 
 const BASE = "/workspace";
@@ -49,36 +53,42 @@ const NAV_ITEMS: NavItem[] = [
     href: BASE,
     icon: LayoutDashboard,
     section: "main",
+    requires: "workspace:view",
   },
   {
     label: "Analytics",
     href: `${BASE}/analytics`,
     icon: BarChart3,
     section: "main",
+    requires: "workspace:view",
   },
   {
     label: "My Assets",
     href: `${BASE}/assets`,
     icon: FolderOpen,
     section: "assets",
+    requires: "workspace:view",
   },
   {
     label: "Create Asset",
     href: `${BASE}/assets/new`,
     icon: PlusCircle,
     section: "assets",
+    requires: "workspace:assets:create",
   },
   {
     label: "Token Lifecycle",
     href: `${BASE}/tokens`,
     icon: Coins,
     section: "tokens",
+    requires: "workspace:view",
   },
   {
     label: "Cap Table",
     href: `${BASE}/cap-table`,
     icon: Users,
     section: "tokens",
+    requires: "workspace:cap_table:view",
   },
   {
     label: "Compliance",
@@ -87,24 +97,28 @@ const NAV_ITEMS: NavItem[] = [
     badge: 3,
     badgeVariant: "destructive",
     section: "compliance",
+    requires: "workspace:view",
   },
   {
     label: "Documents",
     href: `${BASE}/documents`,
     icon: FileText,
     section: "compliance",
+    requires: "workspace:view",
   },
   {
     label: "Team & access",
     href: `${BASE}/settings/team`,
     icon: Users,
     section: "settings",
+    requires: "workspace:team:view",
   },
   {
     label: "Settings",
     href: `${BASE}/settings`,
     icon: Settings,
     section: "settings",
+    requires: "workspace:settings:view",
   },
 ];
 
@@ -119,19 +133,25 @@ const SECTION_LABELS: Record<string, string> = {
 interface WorkspaceSidebarProps {
   issuerName?: string;
   walletAddress?: string;
+  appRole?: AppRole | null;
 }
 
 export function WorkspaceSidebar({
   issuerName = "Issuer workspace",
   walletAddress,
+  appRole = null,
 }: WorkspaceSidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
+  const visibleItems = NAV_ITEMS.filter(
+    (i) => !i.requires || can(appRole, i.requires),
+  );
+
   const sections = ["main", "assets", "tokens", "compliance", "settings"];
   const groupedItems = sections.reduce<Record<string, NavItem[]>>(
     (acc, section) => {
-      const items = NAV_ITEMS.filter((i) => i.section === section);
+      const items = visibleItems.filter((i) => i.section === section);
       if (items.length > 0) acc[section] = items;
       return acc;
     },
@@ -239,7 +259,11 @@ export function WorkspaceSidebar({
         {!collapsed && (
           <div className="px-4 pb-2">
             <Badge variant="outline" className="text-[10px] w-full justify-center">
-              Token RBAC (issuer)
+              {appRole === "issuer_admin"
+                ? "Workspace admin"
+                : appRole === "issuer_member"
+                  ? "Workspace member"
+                  : "Token RBAC (issuer)"}
             </Badge>
           </div>
         )}

@@ -198,6 +198,15 @@ export type DomainErrorCode =
   | "CONTRACT_CALL_FAILED"
   | "PROVIDER_NOT_INITIALIZED"
   | "ADAPTER_NOT_IMPLEMENTED"
+  // Identity / org / invites
+  | "UNAUTHENTICATED"
+  | "FORBIDDEN"
+  | "ORG_NOT_FOUND"
+  | "MEMBERSHIP_NOT_FOUND"
+  | "INVITE_NOT_FOUND"
+  | "INVITE_ALREADY_EXISTS"
+  | "WALLET_LINK_INVALID"
+  | "WEBHOOK_SIGNATURE_INVALID"
   | "UNKNOWN";
 
 export class DomainError extends Error {

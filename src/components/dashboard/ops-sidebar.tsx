@@ -29,6 +29,8 @@ import {
 } from "@/components/ui/tooltip";
 import { useState } from "react";
 import type { PlatformRole } from "@/types/roles";
+import { can, type Permission } from "@/lib/auth/permissions";
+import type { AppRole } from "@/lib/core/identity.types";
 
 interface NavItem {
   label: string;
@@ -36,8 +38,9 @@ interface NavItem {
   icon: React.ElementType;
   badge?: string | number;
   badgeVariant?: "default" | "destructive" | "secondary" | "outline";
-  roles?: PlatformRole[];
   section?: string;
+  /** Off-chain RBAC gate for the dashboard nav. */
+  requires?: Permission;
 }
 
 const BASE = "/ops";
@@ -48,42 +51,46 @@ const NAV_ITEMS: NavItem[] = [
     href: BASE,
     icon: LayoutDashboard,
     section: "main",
+    requires: "ops:view",
   },
   {
     label: "Analytics",
     href: `${BASE}/analytics`,
     icon: BarChart3,
     section: "main",
+    requires: "ops:view",
   },
   {
     label: "Issuer review",
     href: `${BASE}/admin/issuers`,
     icon: Building2,
-    roles: ["ADMIN", "COMPLIANCE", "OPERATOR"],
     badge: "NEW",
     badgeVariant: "secondary",
     section: "admin",
+    requires: "ops:issuers:approve",
   },
   {
     label: "Risk flags",
     href: `${BASE}/admin/flags`,
     icon: AlertTriangle,
-    roles: ["ADMIN", "COMPLIANCE"],
     badge: 7,
     badgeVariant: "destructive",
     section: "admin",
+    requires: "ops:flags:edit",
   },
   {
     label: "Team & access",
     href: `${BASE}/settings/team`,
     icon: Shield,
     section: "access",
+    requires: "ops:team:view",
   },
   {
     label: "Settings",
     href: `${BASE}/settings`,
     icon: Settings,
     section: "access",
+    requires: "ops:settings:view",
   },
 ];
 
@@ -94,24 +101,29 @@ const SECTION_LABELS: Record<string, string> = {
 };
 
 interface OpsSidebarProps {
+  /**
+   * @deprecated kept for compatibility with existing callers — purely
+   * cosmetic. Use `appRole` for RBAC; chain-role badge text falls back
+   * to this when `appRole` isn't supplied.
+   */
   platformRole?: PlatformRole | null;
   operatorName?: string;
   walletAddress?: string;
+  appRole?: AppRole | null;
 }
 
 export function OpsSidebar({
   platformRole,
   operatorName = "QBridge Ops",
   walletAddress,
+  appRole = null,
 }: OpsSidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
-  const visibleItems = NAV_ITEMS.filter((item) => {
-    if (!item.roles) return true;
-    if (!platformRole) return false;
-    return item.roles.includes(platformRole);
-  });
+  const visibleItems = NAV_ITEMS.filter(
+    (i) => !i.requires || can(appRole, i.requires),
+  );
 
   const sections = ["main", "admin", "access"];
   const groupedItems = sections.reduce<Record<string, NavItem[]>>(
@@ -221,16 +233,20 @@ export function OpsSidebar({
           ))}
         </nav>
 
-        {!collapsed && platformRole && (
+        {!collapsed && (appRole || platformRole) && (
           <div className="px-4 pb-2">
             <Badge variant="outline" className="text-[10px] w-full justify-center">
-              {platformRole === "ADMIN"
-                ? "Platform admin"
-                : platformRole === "COMPLIANCE"
-                  ? "Platform compliance"
-                  : platformRole === "OPERATOR"
-                    ? "Platform operator"
-                    : "Platform auditor"}
+              {appRole === "ops_admin"
+                ? "Ops admin"
+                : appRole === "ops_member"
+                  ? "Ops member"
+                  : platformRole === "ADMIN"
+                    ? "Platform admin"
+                    : platformRole === "COMPLIANCE"
+                      ? "Platform compliance"
+                      : platformRole === "OPERATOR"
+                        ? "Platform operator"
+                        : "Platform auditor"}
             </Badge>
           </div>
         )}

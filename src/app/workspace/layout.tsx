@@ -1,15 +1,20 @@
 // ============================================================
 // app/workspace/layout.tsx — Issuer workspace shell (/workspace)
+// Server component. Performs auth + plane check before render.
 // ============================================================
 
 import { WorkspaceSidebar } from "@/components/dashboard/workspace-sidebar";
 import { DashboardHeaderAccount } from "@/components/dashboard/dashboard-header-account";
+import { IdentityControls } from "@/components/dashboard/identity-controls";
 import { Bell, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth/server";
+import { can } from "@/lib/auth/permissions";
 
 export const metadata: Metadata = {
   title: {
@@ -18,16 +23,23 @@ export const metadata: Metadata = {
   },
 };
 
-export default function WorkspaceLayout({
+export default async function WorkspaceLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await getSession();
+  if (!session) redirect("/sign-in");
+  if (!session.activeOrg) redirect("/select-workspace");
+  if (session.activeOrg.kind !== "issuer") redirect("/select-workspace");
+  if (!can(session.appRole, "workspace:view")) redirect("/select-workspace");
+
   return (
     <div className="flex min-h-screen bg-background">
       <WorkspaceSidebar
         walletAddress="0xC3D4533949D52ee67447c87F40c8b98092FD1dF1"
-        issuerName="Acme Capital Ltd."
+        issuerName={session.activeOrg.name ?? "Issuer Workspace"}
+        appRole={session.appRole}
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
@@ -54,6 +66,7 @@ export default function WorkspaceLayout({
               <span className="sr-only">Notifications</span>
             </Button>
 
+            <IdentityControls />
             <DashboardHeaderAccount />
           </div>
         </header>

@@ -34,6 +34,11 @@ import { viemBroadcastAdapter } from "./adapters/broadcast/viem-server.adapter";
 
 // ─── Active adapters ─────────────────────────────────────────
 // Change these lines only — nothing else in the codebase needs to change.
+//
+// NOTE: this file is client-safe. Identity / organization /
+// auth-webhook / wallet-link / audit-log adapters are server-only
+// (they use next/headers, server-only imports, or vendor SDKs that
+// pull in node:async_hooks). Those live in `./container.server.ts`.
 
 export const walletAdapter = web3AuthAdapter;
 export const blockchainAdapter = viemAdapter;

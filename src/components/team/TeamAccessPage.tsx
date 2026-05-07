@@ -23,6 +23,9 @@ export interface TeamAccessPageProps {
   accessManager: "token" | "platform";
   roleDefs: ReadonlyArray<TeamOnChainRoleDef>;
   roleBadgeClass: Record<ChainRoleKey, string>;
+  /** Off-chain RBAC gates resolved server-side. */
+  canInvite?: boolean;
+  canManage?: boolean;
 }
 
 export function TeamAccessPage({
@@ -32,6 +35,8 @@ export function TeamAccessPage({
   accessManager,
   roleDefs,
   roleBadgeClass,
+  canInvite = true,
+  canManage = true,
 }: TeamAccessPageProps) {
   const { address: connectedAddress } = useWallet();
   const { chainId } = useContracts();
@@ -149,7 +154,15 @@ export function TeamAccessPage({
         <p className="max-w-lg text-sm text-muted-foreground">{description}</p>
       </header>
 
-      <InviteBar onInvite={handleInvite} />
+      {canInvite ? (
+        <InviteBar onInvite={handleInvite} />
+      ) : (
+        <Alert>
+          <AlertDescription>
+            You have view-only access to this team. Workspace admins can invite or remove members.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -185,9 +198,15 @@ export function TeamAccessPage({
         onOpenChange={handleSheetOpenChange}
         connectedAddress={connectedAddress}
         chainId={chainId}
-        onUpdateMember={handleUpdateMember}
-        onChainRoleChange={handleChainRoleChange}
-        onRemoveMember={handleRemove}
+        onUpdateMember={canManage ? handleUpdateMember : () => {}}
+        onChainRoleChange={canManage ? handleChainRoleChange : () => {}}
+        onRemoveMember={
+          canManage
+            ? handleRemove
+            : async () => {
+                throw new Error("View-only: workspace admin required to remove a member.");
+              }
+        }
         accessManager={accessManager}
         roleDefs={roleDefs}
         roleBadgeClass={roleBadgeClass}
