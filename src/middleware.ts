@@ -42,7 +42,10 @@ function planeFor(req: NextRequest): "ops" | "issuer" | null {
   return null;
 }
 
-const IDENTITY_PROVIDER = (process.env.IDENTITY_PROVIDER ?? "memory").toLowerCase();
+// Default is "none" so a fresh clone with no .env doesn't auto-log
+// the visitor in as the seeded dev user. Explicitly set
+// IDENTITY_PROVIDER=memory to opt into the in-process dev fixture.
+const IDENTITY_PROVIDER = (process.env.IDENTITY_PROVIDER ?? "none").toLowerCase();
 
 export default IDENTITY_PROVIDER === "clerk"
   ? clerkMiddleware(async (auth, req) => {

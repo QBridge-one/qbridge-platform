@@ -6,8 +6,13 @@
 //
 // ─── Provider switches ──────────────────────────────────────
 //
-// IDENTITY_PROVIDER  = "memory" | "clerk"
-//   memory : in-process dev store; no IdP keys required
+// IDENTITY_PROVIDER  = "none" | "memory" | "clerk"   (default: "none")
+//   none   : unauthenticated by default; visitors land on the marketing
+//            page. Use this when you don't have a .env yet — it stops
+//            the app from auto-redirecting fresh clones into /ops.
+//   memory : in-process dev fixture (seeded "QBridge Ops" + "Demo Issuer"
+//            orgs, signed in as a synthetic dev_root user). No IdP keys
+//            required. Opt-in only.
 //   clerk  : Clerk Organizations (requires CLERK_SECRET_KEY etc.)
 //
 // WALLET_PROVIDER    = "web3auth" | "alchemy" | "turnkey"
@@ -31,6 +36,7 @@ import "server-only";
 
 import { memoryIdentityAdapter } from "./adapters/identity/memory.adapter";
 import { clerkIdentityAdapter } from "./adapters/identity/clerk.adapter";
+import { noneIdentityAdapter } from "./adapters/identity/none.adapter";
 import { memoryOrganizationAdapter } from "./adapters/organization/memory.adapter";
 import { clerkOrganizationAdapter } from "./adapters/organization/clerk.adapter";
 import { memoryAuthWebhookAdapter } from "./adapters/auth-webhook/memory.adapter";
@@ -40,16 +46,32 @@ import { clerkWalletLinkAdapter } from "./adapters/wallet-link/clerk.adapter";
 import { memoryAuditLogAdapter } from "./adapters/audit-log/memory.adapter";
 
 // ─── Identity provider switch ────────────────────────────────
-const IDENTITY_PROVIDER = (process.env.IDENTITY_PROVIDER ?? "memory").toLowerCase();
+// Default is "none" so a fresh clone with no .env doesn't auto-log
+// the visitor in as the seeded dev fixture user.
+const IDENTITY_PROVIDER = (process.env.IDENTITY_PROVIDER ?? "none").toLowerCase();
 
 export const identityAdapter =
-  IDENTITY_PROVIDER === "clerk" ? clerkIdentityAdapter : memoryIdentityAdapter;
+  IDENTITY_PROVIDER === "clerk"
+    ? clerkIdentityAdapter
+    : IDENTITY_PROVIDER === "memory"
+      ? memoryIdentityAdapter
+      : noneIdentityAdapter;
 
+// org / auth-webhook adapters keep their existing memory fallback —
+// when identity is "none" no session exists, so these are unreachable
+// from request handlers (requireSession throws first).
 export const organizationAdapter =
   IDENTITY_PROVIDER === "clerk" ? clerkOrganizationAdapter : memoryOrganizationAdapter;
 
 export const authWebhookAdapter =
   IDENTITY_PROVIDER === "clerk" ? clerkAuthWebhookAdapter : memoryAuthWebhookAdapter;
+
+/** Exported for read-only UI hints (e.g. dev banner on the landing page). */
+export const IDENTITY_PROVIDER_RESOLVED = IDENTITY_PROVIDER as
+  | "none"
+  | "memory"
+  | "clerk"
+  | string;
 
 // Wallet linking persists the SIWE-verified address into the same
 // store the IdentityPort reads `primaryWallet` from. Keep these

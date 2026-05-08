@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { Nav } from "@/components/landing/nav";
+import { DevSetupBanner } from "@/components/landing/dev-setup-banner";
 import { Hero } from "@/components/landing/hero";
 import { Problem } from "@/components/landing/problem";
 import { Solution } from "@/components/landing/solution";
@@ -35,6 +36,7 @@ export default async function QBridgeLanding({
 
   return (
     <>
+      <DevSetupBanner />
       <Nav />
       <main>
         <Hero />
