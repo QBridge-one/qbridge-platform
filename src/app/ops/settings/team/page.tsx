@@ -17,6 +17,11 @@ import {
   mapInviteToTeamMember,
   mapOrgMemberToTeamMember,
 } from "@/lib/team/map";
+import {
+  activeChainId,
+  getChainRolesForWallets,
+  type ChainRolesByWallet,
+} from "@/lib/team/chain-roles";
 import type { TeamMember } from "@/types/team";
 
 export default async function OpsTeamPage() {
@@ -31,8 +36,22 @@ export default async function OpsTeamPage() {
       organizationAdapter.listMembers(orgId).catch(() => []),
       organizationAdapter.listInvites(orgId).catch(() => []),
     ]);
+    // Hydrate from the indexer DB. The bootstrap step seeds the ops
+    // org id as "qbridge-ops"; until Clerk org ids are wired into the
+    // indexer (PR 3b) we look up by that constant.
+    let chainRoles: ChainRolesByWallet = new Map();
+    try {
+      chainRoles = await getChainRolesForWallets({
+        chainId: activeChainId(),
+        plane: "platform",
+        orgId: "qbridge-ops",
+        wallets: members.map((m) => m.walletAddress),
+      });
+    } catch (err) {
+      console.warn("[team] chain-role hydration failed", err);
+    }
     initialMembers = [
-      ...members.map(mapOrgMemberToTeamMember),
+      ...members.map((m) => mapOrgMemberToTeamMember(m, chainRoles)),
       ...invites.filter((i) => i.status === "pending").map(mapInviteToTeamMember),
     ];
   }

@@ -14,6 +14,11 @@ import {
   mapInviteToTeamMember,
   mapOrgMemberToTeamMember,
 } from "@/lib/team/map";
+import {
+  activeChainId,
+  getChainRolesForWallets,
+  type ChainRolesByWallet,
+} from "@/lib/team/chain-roles";
 import type { TeamMember } from "@/types/team";
 
 export default async function WorkspaceTeamPage() {
@@ -30,8 +35,22 @@ export default async function WorkspaceTeamPage() {
       organizationAdapter.listMembers(orgId).catch(() => []),
       organizationAdapter.listInvites(orgId).catch(() => []),
     ]);
+    // Hydrate on-chain role state from the indexer DB. If the DB or
+    // indexer isn't reachable we degrade to "no chain roles known"
+    // rather than 500'ing the team page.
+    let chainRoles: ChainRolesByWallet = new Map();
+    try {
+      chainRoles = await getChainRolesForWallets({
+        chainId: activeChainId(),
+        plane: "token",
+        orgId,
+        wallets: members.map((m) => m.walletAddress),
+      });
+    } catch (err) {
+      console.warn("[team] chain-role hydration failed", err);
+    }
     initialMembers = [
-      ...members.map(mapOrgMemberToTeamMember),
+      ...members.map((m) => mapOrgMemberToTeamMember(m, chainRoles)),
       ...invites.filter((i) => i.status === "pending").map(mapInviteToTeamMember),
     ];
   }

@@ -8,7 +8,13 @@
 // ============================================================
 
 import type { Invite, OrgMember } from "@/lib/core/identity.types";
-import type { AvatarVariant, TeamMember } from "@/types/team";
+import type { AvatarVariant, ChainRoleKey, TeamMember } from "@/types/team";
+
+/** Map<lowercased wallet, chainRoles> — produced by getChainRolesForWallets. */
+export type ChainRoleLookup = ReadonlyMap<
+  string,
+  Partial<Record<ChainRoleKey, boolean>>
+>;
 
 const AVATAR_VARIANTS: AvatarVariant[] = ["blue", "purple", "teal", "amber", "gray"];
 
@@ -30,9 +36,17 @@ function platformRoleFromAppRoles(roles: readonly string[]): "admin" | "member" 
   return roles.some((r) => r.endsWith("_admin")) ? "admin" : "member";
 }
 
-/** Map an active org member into the dashboard TeamMember row. */
-export function mapOrgMemberToTeamMember(m: OrgMember): TeamMember {
+/** Map an active org member into the dashboard TeamMember row.
+ *  `chainRoleLookup` is the indexer-backed map produced by
+ *  getChainRolesForWallets — pass undefined to leave chainRoles empty
+ *  (e.g. during the brief window before the indexer has caught up, or
+ *  in tests). */
+export function mapOrgMemberToTeamMember(
+  m: OrgMember,
+  chainRoleLookup?: ChainRoleLookup,
+): TeamMember {
   const appRoles = m.appRoles && m.appRoles.length > 0 ? m.appRoles : [m.appRole];
+  const wallet = m.walletAddress?.toLowerCase() ?? null;
   return {
     id: m.userId,
     email: m.email,
@@ -43,10 +57,7 @@ export function mapOrgMemberToTeamMember(m: OrgMember): TeamMember {
     walletAddress: m.walletAddress,
     joinedAt: m.joinedAt,
     lastActiveAt: m.lastActiveAt,
-    // chainRoles come from on-chain AccessManager reads; populated by
-    // a separate hook on the client. Empty here keeps the UI honest
-    // ("No roles") until those reads land.
-    chainRoles: {},
+    chainRoles: wallet ? (chainRoleLookup?.get(wallet) ?? {}) : {},
     avatarVariant: pickAvatarVariant(m.userId),
   };
 }

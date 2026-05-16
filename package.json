@@ -7,7 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "generate": "ts-node --project tsconfig.scripts.json src/scripts/generate.ts"
+    "generate": "ts-node --project tsconfig.scripts.json src/scripts/generate.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/scripts/db-migrate.ts",
+    "db:studio": "drizzle-kit studio",
+    "indexer": "tsx src/scripts/indexer.ts",
+    "indexer:once": "INDEXER_ONESHOT=1 tsx src/scripts/indexer.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.3.2",
@@ -17,9 +22,11 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "drizzle-orm": "^0.45.2",
     "lucide-react": "^0.577.0",
     "next": "16.1.7",
     "nodemailer": "^8.0.3",
+    "postgres": "^3.4.9",
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -39,10 +46,13 @@
     "@types/nodemailer": "^7.0.11",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.1.7",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
+    "tsx": "^4.22.0",
     "typescript": "^5"
   }
 }
