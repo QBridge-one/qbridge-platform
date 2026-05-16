@@ -37,7 +37,7 @@ export default async function OpsLayout({
   return (
     <div className="flex min-h-screen bg-background">
       <OpsSidebar
-        platformRole="ADMIN"
+        platformRole="PLATFORM_ADMIN"
         walletAddress="0xC3D4533949D52ee67447c87F40c8b98092FD1dF1"
         operatorName={session.activeOrg.name ?? "QBridge Operations"}
         appRoles={session.appRoles}

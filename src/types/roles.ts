@@ -1,67 +1,46 @@
 // ============================================================
 // types/roles.ts
-// Role definitions for the two-tier RBAC system
-// Matches OpenZeppelin AccessManagerUpgradeable role IDs
+// Labels, descriptions and UI helpers for AccessManager roles.
+// IDs live in src/lib/contracts/roles.ts — DO NOT duplicate here.
 // ============================================================
 
+import { PLATFORM_ROLES, TOKEN_ROLES } from "@/lib/contracts/roles";
+
+export { PLATFORM_ROLES, TOKEN_ROLES };
+
 // ─── Platform-Level Roles ────────────────────────────────────
-// Managed by PlatformAccessManager (your team)
-// Controls: issuer approval, compliance infra, emergency ops
+// Managed by PlatformAccessManager (QBridge governance).
 
-export const PLATFORM_ROLES = {
-  /** Full platform control — can do everything */
-  ADMIN: BigInt(0), // OZ reserves 0 as ADMIN_ROLE
-  /** Review assets, manage IComplianceChecker addresses */
-  COMPLIANCE: BigInt(1),
-  /** Day-to-day ops, KYB review, issuer onboarding */
-  OPERATOR: BigInt(2),
-  /** Read-only access for audits and reports */
-  AUDITOR: BigInt(3),
-} as const;
-
-export type PlatformRole = keyof typeof PLATFORM_ROLES;
+export type PlatformRole = Exclude<keyof typeof PLATFORM_ROLES, "PUBLIC">;
 
 export const PLATFORM_ROLE_LABELS: Record<PlatformRole, string> = {
-  ADMIN: "Platform Admin",
+  SUPER_ADMIN: "Super Admin",
+  PLATFORM_ADMIN: "Platform Admin",
   COMPLIANCE: "Platform Compliance",
   OPERATOR: "Platform Operator",
   AUDITOR: "Platform Auditor",
 };
 
 export const PLATFORM_ROLE_DESCRIPTIONS: Record<PlatformRole, string> = {
-  ADMIN:
-    "Full platform control — approve issuers, manage platform contracts, emergency controls",
+  SUPER_ADMIN:
+    "OZ ADMIN_ROLE — deploys/upgrades the AccessManager, labels roles, sets function gates. Reserved for governance.",
+  PLATFORM_ADMIN:
+    "Grants and revokes platform functional roles (compliance / operator / auditor). Day-to-day QBridge admin.",
   COMPLIANCE:
-    "Review and approve asset listings, manage compliance checker contracts",
+    "Review and approve asset listings, manage compliance checker contracts.",
   OPERATOR:
-    "Issuer KYB review, onboarding support, day-to-day platform operations",
-  AUDITOR: "Read-only access to all platform data, reports, and audit trails",
+    "Issuer KYB review, onboarding support, day-to-day platform operations.",
+  AUDITOR: "Read-only access to platform audit views and on-chain logs.",
 };
 
 // ─── Token-Level Roles ───────────────────────────────────────
-// Managed by TokenAccessManager (per issued token)
-// Controls: mint, burn, freeze, pause, force ops
-// The issuer receives ADMIN_ROLE (id 0) at token creation
+// Managed by TokenAccessManager (one per issued token).
 
-export const TOKEN_ROLES = {
-  /** Full token control — issuer gets this at deployment (OZ id 0) */
-  ADMIN: BigInt(0),
-  /** Can call mint() on the token contract */
-  MINTER: BigInt(10),
-  /** Can freeze/unfreeze accounts, setFrozenBalance */
-  COMPLIANCE: BigInt(11),
-  /** Can forceTransfer / forceBurn for regulatory recovery */
-  ENFORCER: BigInt(12),
-  /** Can pause/unpause regular operations */
-  PAUSER: BigInt(13),
-  /** Read-only access to token state */
-  AUDITOR: BigInt(14),
-} as const;
-
-export type TokenRole = keyof typeof TOKEN_ROLES;
+export type TokenRole = Exclude<keyof typeof TOKEN_ROLES, "PUBLIC">;
 
 export const TOKEN_ROLE_LABELS: Record<TokenRole, string> = {
-  ADMIN: "Token Admin",
+  SUPER_ADMIN: "Super Admin",
+  TOKEN_ADMIN: "Token Admin",
   MINTER: "Minter",
   COMPLIANCE: "Compliance Officer",
   ENFORCER: "Compliance Enforcer",
@@ -70,15 +49,17 @@ export const TOKEN_ROLE_LABELS: Record<TokenRole, string> = {
 };
 
 export const TOKEN_ROLE_DESCRIPTIONS: Record<TokenRole, string> = {
-  ADMIN:
-    "Full token control — assign roles, configure, and manage the token contract",
-  MINTER: "Can mint new tokens to any address within compliance rules",
+  SUPER_ADMIN:
+    "OZ ADMIN_ROLE — deploys/upgrades this token's AccessManager. Reserved for factory / governance.",
+  TOKEN_ADMIN:
+    "Grants and revokes token functional roles (minter / compliance / etc). Issuer admin for this token.",
+  MINTER: "Can mint new tokens to any address within compliance rules.",
   COMPLIANCE:
-    "Can freeze/unfreeze accounts and manage partial frozen balances",
+    "Can freeze/unfreeze accounts and manage partial frozen balances.",
   ENFORCER:
-    "Can force transfer or force burn tokens for regulatory compliance",
-  PAUSER: "Can pause and unpause regular token operations",
-  AUDITOR: "Read-only access to token data, events, and balances",
+    "Can force transfer or force burn tokens for regulatory compliance.",
+  PAUSER: "Can pause and unpause regular token operations.",
+  AUDITOR: "Read-only access to token data, events, and balances.",
 };
 
 // ─── Combined role type for UI ────────────────────────────────
@@ -90,36 +71,45 @@ export interface RoleDefinition {
   label: string;
   description: string;
   scope: RoleScope;
-  sensitive?: boolean; // warn before assigning
+  /** Warn before assigning — true for super/admin tiers and enforcement. */
+  sensitive?: boolean;
 }
 
-export const ALL_PLATFORM_ROLES: RoleDefinition[] = Object.entries(
-  PLATFORM_ROLES
-).map(([key, id]) => ({
-  id,
+const SENSITIVE_KEYS = new Set([
+  "SUPER_ADMIN",
+  "PLATFORM_ADMIN",
+  "TOKEN_ADMIN",
+  "ENFORCER",
+]);
+
+export const ALL_PLATFORM_ROLES: RoleDefinition[] = (
+  Object.keys(PLATFORM_ROLE_LABELS) as PlatformRole[]
+).map((key) => ({
+  id: PLATFORM_ROLES[key],
   key,
-  label: PLATFORM_ROLE_LABELS[key as PlatformRole],
-  description: PLATFORM_ROLE_DESCRIPTIONS[key as PlatformRole],
+  label: PLATFORM_ROLE_LABELS[key],
+  description: PLATFORM_ROLE_DESCRIPTIONS[key],
   scope: "PLATFORM",
-  sensitive: key === "ADMIN" || key === "COMPLIANCE",
+  sensitive: SENSITIVE_KEYS.has(key),
 }));
 
-export const ALL_TOKEN_ROLES: RoleDefinition[] = Object.entries(
-  TOKEN_ROLES
-).map(([key, id]) => ({
-  id,
+export const ALL_TOKEN_ROLES: RoleDefinition[] = (
+  Object.keys(TOKEN_ROLE_LABELS) as TokenRole[]
+).map((key) => ({
+  id: TOKEN_ROLES[key],
   key,
-  label: TOKEN_ROLE_LABELS[key as TokenRole],
-  description: TOKEN_ROLE_DESCRIPTIONS[key as TokenRole],
+  label: TOKEN_ROLE_LABELS[key],
+  description: TOKEN_ROLE_DESCRIPTIONS[key],
   scope: "TOKEN",
-  sensitive: key === "ADMIN" || key === "ENFORCER",
+  sensitive: SENSITIVE_KEYS.has(key),
 }));
 
 // ─── Session user type (from NextAuth + Web3Auth) ─────────────
 export interface SessionUser {
-  address: string; // wallet address from Web3Auth
+  address: string;
   email?: string;
   name?: string;
-  platformRole: PlatformRole | null; // null = no platform access
-  issuerId?: string; // set if user is an issuer
+  /** null = no platform access */
+  platformRole: PlatformRole | null;
+  issuerId?: string;
 }

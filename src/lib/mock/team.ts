@@ -5,9 +5,15 @@
 import type { TeamMember, ChainRoleKey, AvatarVariant, TeamOnChainRoleDef } from "@/types/team";
 import { TOKEN_ROLES } from "@/lib/contracts/roles";
 
-/** Tailwind-only badge styles per mockup (light + dark). */
+/** Tailwind badge styles for every ChainRoleKey. SUPER_ADMIN/PLATFORM_ADMIN
+ *  share the violet "owner" palette; TOKEN_ADMIN uses a parallel violet so
+ *  the tier is visually distinct from functional chips. */
 export const CHAIN_ROLE_BADGE_CLASS: Record<ChainRoleKey, string> = {
-  ADMIN:
+  SUPER_ADMIN:
+    "border-transparent bg-violet-300 text-violet-950 dark:bg-violet-800/60 dark:text-violet-100",
+  PLATFORM_ADMIN:
+    "border-transparent bg-violet-200 text-violet-950 dark:bg-violet-900/50 dark:text-violet-200",
+  TOKEN_ADMIN:
     "border-transparent bg-violet-200 text-violet-950 dark:bg-violet-900/50 dark:text-violet-200",
   MINTER:
     "border-transparent bg-sky-200 text-sky-950 dark:bg-sky-900/50 dark:text-sky-200",
@@ -30,12 +36,16 @@ export const AVATAR_VARIANT_CLASS: Record<AvatarVariant, string> = {
   gray: "bg-muted text-muted-foreground",
 };
 
+/** Token AccessManager role catalog shown in the issuer workspace UI.
+ *  SUPER_ADMIN is intentionally omitted — it's a governance role and
+ *  must be granted via Etherscan / a dedicated admin tool. */
 export const CHAIN_ROLE_DEFS: ReadonlyArray<TeamOnChainRoleDef> = [
   {
-    key: "ADMIN",
-    roleId: TOKEN_ROLES.ADMIN,
-    label: "ADMIN",
-    description: "Full control — can grant or revoke any role on this contract.",
+    key: "TOKEN_ADMIN",
+    roleId: TOKEN_ROLES.TOKEN_ADMIN,
+    label: "TOKEN ADMIN",
+    description:
+      "Grants and revokes the operational roles below. Use for the issuer's primary admins.",
   },
   {
     key: "MINTER",
@@ -95,7 +105,7 @@ export const MOCK_TEAM_MEMBERS: TeamMember[] = [
     joinedAt: new Date("2025-01-08T12:00:00Z").toISOString(),
     lastActiveAt: new Date(Date.now() - 2 * 3600000).toISOString(),
     avatarVariant: "teal",
-    chainRoles: { COMPLIANCE: true, AUDITOR: true },
+    chainRoles: { TOKEN_ADMIN: true, COMPLIANCE: true },
   },
   {
     id: "tm-2",

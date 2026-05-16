@@ -6,7 +6,14 @@ import { MemberAvatar } from "./MemberAvatar";
 import { ChainRoleBadge } from "./ChainRoleBadge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { TeamMember, ChainRoleKey, TeamOnChainRoleDef } from "@/types/team";
+import {
+  ADMIN_TIER_KEYS,
+  deriveChainTier,
+  type TeamMember,
+  type ChainRoleKey,
+  type ChainTier,
+  type TeamOnChainRoleDef,
+} from "@/types/team";
 import { CHAIN_ROLE_BADGE_CLASS, CHAIN_ROLE_DEFS } from "@/lib/mock/team";
 import { APP_ROLE_LABELS } from "@/lib/core/identity.types";
 import { cn } from "@/lib/utils";
@@ -15,6 +22,11 @@ function activeChainKeys(m: TeamMember): ChainRoleKey[] {
   return (Object.entries(m.chainRoles) as [ChainRoleKey, boolean][])
     .filter(([, v]) => v)
     .map(([k]) => k);
+}
+
+/** Functional roles only — tier roles render as a separate badge. */
+function functionalChainKeys(keys: ChainRoleKey[]): ChainRoleKey[] {
+  return keys.filter((k) => k !== "SUPER_ADMIN" && !ADMIN_TIER_KEYS.has(k));
 }
 
 interface MemberTableProps {
@@ -256,9 +268,12 @@ function ChainRolesCell({
   if (chains.length === 0) {
     return <span className="text-xs text-muted-foreground">No roles</span>;
   }
+  const tier = deriveChainTier(member.chainRoles);
+  const functional = functionalChainKeys(chains);
   return (
-    <div className="flex flex-wrap gap-1">
-      {chains.map((k) => (
+    <div className="flex flex-wrap items-center gap-1">
+      <TierBadge tier={tier} />
+      {functional.map((k) => (
         <ChainRoleBadge
           key={k}
           roleKey={k}
@@ -267,5 +282,32 @@ function ChainRolesCell({
         />
       ))}
     </div>
+  );
+}
+
+/** Clerk-style coarse tier (Owner / Admin / Member) derived from chainRoles.
+ *  Hidden when the member has only functional roles ("none" tier would
+ *  never render — we short-circuit above when chains is empty). */
+function TierBadge({ tier }: { tier: ChainTier }) {
+  if (tier === "none") return null;
+  const cfg: Record<Exclude<ChainTier, "none">, { label: string; cls: string }> = {
+    owner: {
+      label: "Owner",
+      cls: "border-transparent bg-violet-300 text-violet-950 dark:bg-violet-800/60 dark:text-violet-100",
+    },
+    admin: {
+      label: "Admin",
+      cls: "border-transparent bg-violet-200 text-violet-950 dark:bg-violet-900/50 dark:text-violet-200",
+    },
+    member: {
+      label: "Member",
+      cls: "border-transparent bg-muted text-foreground",
+    },
+  };
+  const { label, cls } = cfg[tier];
+  return (
+    <Badge className={cn("text-xs font-medium", cls)} title={`On-chain tier: ${label}`}>
+      {label}
+    </Badge>
   );
 }

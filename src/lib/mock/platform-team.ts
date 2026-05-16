@@ -9,12 +9,15 @@ import { CHAIN_ROLE_BADGE_CLASS } from "@/lib/mock/team";
 /** Same Tailwind map as issuer workspace; platform sheet only shows PLATFORM_TEAM_ROLE_DEFS keys. */
 export const PLATFORM_TEAM_BADGE_CLASS = CHAIN_ROLE_BADGE_CLASS;
 
+/** Platform AccessManager role catalog shown in the ops UI.
+ *  SUPER_ADMIN is intentionally omitted — granted via governance only. */
 export const PLATFORM_TEAM_ROLE_DEFS: ReadonlyArray<TeamOnChainRoleDef> = [
   {
-    key: "ADMIN",
-    roleId: PLATFORM_ROLES.ADMIN,
-    label: "ADMIN",
-    description: "Full control over PlatformAccessManager — grant or revoke any platform role.",
+    key: "PLATFORM_ADMIN",
+    roleId: PLATFORM_ROLES.PLATFORM_ADMIN,
+    label: "PLATFORM ADMIN",
+    description:
+      "Grants and revokes the operational platform roles below. Day-to-day QBridge admin.",
   },
   {
     key: "COMPLIANCE",
@@ -49,7 +52,7 @@ export const MOCK_OPS_TEAM_MEMBERS: TeamMember[] = [
     joinedAt: new Date("2024-06-01T12:00:00Z").toISOString(),
     lastActiveAt: new Date(Date.now() - 3600000).toISOString(),
     avatarVariant: "teal",
-    chainRoles: { COMPLIANCE: true, OPERATOR: true },
+    chainRoles: { PLATFORM_ADMIN: true, COMPLIANCE: true },
   },
   {
     id: "ops-2",

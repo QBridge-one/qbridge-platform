@@ -377,10 +377,10 @@ export const MOCK_TEAM: TeamMember[] = [
     walletAddress: "0xC3D4533949D52ee67447c87F40c8b98092FD1dF1",
     email: "admin@acmecapital.ca",
     name: "Alice Dubois",
-    platformRole: "ADMIN",
+    platformRole: "PLATFORM_ADMIN",
     tokenRoles: [
-      { assetId: "asset-1", assetName: "Toronto Commercial Tower", assetSymbol: "TCT", role: "ADMIN", grantedAt: "2025-01-15T10:00:00Z", grantedBy: "0xC3D4533949D52ee67447c87F40c8b98092FD1dF1" },
-      { assetId: "asset-3", assetName: "CAD Stablecoin", assetSymbol: "CADC", role: "ADMIN", grantedAt: "2024-11-01T08:00:00Z", grantedBy: "0xC3D4533949D52ee67447c87F40c8b98092FD1dF1" },
+      { assetId: "asset-1", assetName: "Toronto Commercial Tower", assetSymbol: "TCT", role: "TOKEN_ADMIN", grantedAt: "2025-01-15T10:00:00Z", grantedBy: "0xC3D4533949D52ee67447c87F40c8b98092FD1dF1" },
+      { assetId: "asset-3", assetName: "CAD Stablecoin", assetSymbol: "CADC", role: "TOKEN_ADMIN", grantedAt: "2024-11-01T08:00:00Z", grantedBy: "0xC3D4533949D52ee67447c87F40c8b98092FD1dF1" },
     ],
     addedAt: "2024-10-01T00:00:00Z",
     lastActiveAt: "2025-02-10T15:00:00Z",

@@ -25,10 +25,10 @@ import type { ChainRoleKey } from "@/types/team";
 
 export const ROLE_BRIDGE: Record<AppRole, readonly ChainRoleKey[]> = {
   // ── Issuer plane → TokenAccessManager roles ──
-  // Workspace admin gets the contract admin authority + pause power.
-  // Granular role separation is preferred for day-to-day ops; admin
-  // is intentionally broad and should be a small group.
-  issuer_admin: ["ADMIN", "PAUSER"],
+  // Workspace admin gets the tier-1 TOKEN_ADMIN authority + pause power.
+  // SUPER_ADMIN (tier 0) is governance-only and intentionally NOT mapped
+  // from any off-chain app role.
+  issuer_admin: ["TOKEN_ADMIN", "PAUSER"],
   // CCO drives compliance + freeze/unfreeze. ENFORCER is the role
   // that gates investor-level enforcement actions on the token.
   issuer_compliance: ["COMPLIANCE", "ENFORCER"],
@@ -45,11 +45,12 @@ export const ROLE_BRIDGE: Record<AppRole, readonly ChainRoleKey[]> = {
   issuer_member: [],
 
   // ── Ops plane → PlatformAccessManager roles ──
-  // Stubbed; populate once the platform role catalog is finalized.
-  ops_admin: [],
-  ops_compliance: [],
-  ops_onboarding: [],
-  ops_support: [],
+  // ops_admin gets the tier-1 PLATFORM_ADMIN authority (can grant the
+  // operational roles below). SUPER_ADMIN is governance-only.
+  ops_admin: ["PLATFORM_ADMIN"],
+  ops_compliance: ["COMPLIANCE"],
+  ops_onboarding: ["OPERATOR"],
+  ops_support: ["OPERATOR"],
   ops_engineer: [],
   ops_member: [],
 };

@@ -43,7 +43,9 @@ function opsRoleBadge(
       : `${APP_ROLE_LABELS[primary]} +${roles.length - 1}`;
   }
   switch (fallback) {
-    case "ADMIN":
+    case "SUPER_ADMIN":
+      return "Platform owner";
+    case "PLATFORM_ADMIN":
       return "Platform admin";
     case "COMPLIANCE":
       return "Platform compliance";

@@ -15,7 +15,18 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { MemberAvatar } from "./MemberAvatar";
 import { CHAIN_ROLE_BADGE_CLASS, CHAIN_ROLE_DEFS } from "@/lib/mock/team";
-import type { TeamMember, ChainRoleKey, TeamOnChainRoleDef } from "@/types/team";
+import {
+  ADMIN_TIER_KEYS,
+  type TeamMember,
+  type ChainRoleKey,
+  type TeamOnChainRoleDef,
+} from "@/types/team";
+
+/** Keys the connected wallet must never revoke from itself (would lock
+ *  them out of the AccessManager). Mirrors the on-chain admin tier. */
+function isSelfLockoutKey(key: ChainRoleKey): boolean {
+  return key === "SUPER_ADMIN" || ADMIN_TIER_KEYS.has(key);
+}
 import type { Address, Hex } from "@/lib/core/types";
 import { APP_ROLES, APP_ROLE_LABELS, type AppRole } from "@/lib/core/identity.types";
 import {
@@ -459,7 +470,7 @@ function TokenChainRoleToggleRow({
   const loading = granting || revoking;
   const wallet = member.walletAddress;
   const disabled =
-    !wallet || !tokenAddress || wrongChain || loading || (isSelf && def.key === "ADMIN");
+    !wallet || !tokenAddress || wrongChain || loading || (isSelf && isSelfLockoutKey(def.key));
 
   const handleToggle = async (checked: boolean) => {
     if (!wallet || !tokenAddress || wrongChain) return;
@@ -721,7 +732,7 @@ function PlatformChainRoleToggleRow({
   const loading = granting || revoking;
   const wallet = member.walletAddress;
   const disabled =
-    !wallet || !platformAddress || wrongChain || loading || (isSelf && def.key === "ADMIN");
+    !wallet || !platformAddress || wrongChain || loading || (isSelf && isSelfLockoutKey(def.key));
 
   const handleToggle = async (checked: boolean) => {
     if (!wallet || !platformAddress || wrongChain) return;
