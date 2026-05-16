@@ -3,13 +3,12 @@
 // ============================================================
 // lib/hooks/useContracts.ts
 //
-// The single hook every component uses to get contract addresses.
-// Automatically returns addresses for the user's current chain.
-// Returns null addresses if chain is not supported — UI handles gracefully.
+// Resolves contract addresses for the wallet's current chain.
+// Returns `null` when the chain is unsupported or env vars are missing
+// so consumers (toggles, write hooks) stay disabled.
 //
 // Usage:
 //   const { platformAccessManager, tokenAccessManager } = useContracts()
-//   // use in hook args — wagmi skips call if address is null
 // ============================================================
 
 import { useChainId } from "wagmi";
@@ -25,18 +24,8 @@ export interface ContractAddresses {
   chainId: number;
 }
 
-// When Web3Auth isn't initialized yet, wagmi defaults to mainnet (chain 1).
-// If we're on SAPPHIRE_DEVNET (Sepolia only), use Sepolia as fallback.
-const isDevnet = process.env.NEXT_PUBLIC_WEB3AUTH_NETWORK !== "mainnet";
-const FALLBACK_CHAIN_ID = isDevnet ? 11155111 : 1;
-
 export function useContracts(): ContractAddresses {
-  let chainId = useChainId();
-
-  // Use fallback when wagmi reports mainnet but we're configured for devnet
-  if (chainId === 1 && isDevnet) {
-    chainId = FALLBACK_CHAIN_ID;
-  }
+  const chainId = useChainId();
 
   if (!isChainSupported(chainId)) {
     return {
@@ -79,11 +68,5 @@ export function useTokenAMAddress(): Address | null {
 }
 
 export function useContractAddress(contractKey: string): Address | null {
-  let chainId = useChainId();
-
-  if (chainId === 1 && isDevnet) {
-    chainId = FALLBACK_CHAIN_ID;
-  }
-
-  return getContractAddress(chainId, contractKey) as Address | null;
+  return getContractAddress(useChainId(), contractKey) as Address | null;
 }

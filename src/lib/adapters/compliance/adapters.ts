@@ -139,11 +139,15 @@ export class OnChainComplianceAdapter implements CompliancePort {
         message.includes("AccessManagerUnauthorizedAccount") ||
         message.includes("0xf07e038f")
       ) {
+        const target = params.contractCall.address;
+        const fn = params.contractCall.functionName;
         return {
           status: "failed",
           failedRule: "AccessControl",
           reason:
-            "This wallet is not allowed to perform that action on the Access Manager. For token roles, connect a wallet that holds Token ADMIN (role 0) or the configured admin for that role.",
+            `Connected wallet is not authorized to call ${fn} on AccessManager ${target}. ` +
+            `Connect a wallet that holds the admin role for this action (role 0 by default), ` +
+            `and make sure you are on the same network as the contract.`,
         };
       }
 

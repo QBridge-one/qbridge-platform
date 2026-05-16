@@ -27,8 +27,13 @@ import {
   useRevokeRole as usePlatformRevokeRole,
 } from "@/lib/generated/platform-access-manager";
 import { usePlatformAMAddress, useTokenAMAddress } from "@/lib/hooks/useContracts";
+import { useChainId, useSwitchChain } from "wagmi";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+/** Deployment chain the wallet must be on. Mirrors src/config/web3auth.ts. */
+const EXPECTED_CHAIN_ID =
+  process.env.NEXT_PUBLIC_WEB3AUTH_NETWORK === "mainnet" ? 1 : 11155111;
 
 function explorerAddressUrl(chainId: number, address: string): string | null {
   if (chainId === 11155111) return `https://sepolia.etherscan.io/address/${address}`;
@@ -303,6 +308,27 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Compact "wrong network" hint with a one-click switch. Used in chain-role toggle rows. */
+function WrongNetworkHint({ expectedChainId }: { expectedChainId: number }) {
+  const { switchChain, isPending } = useSwitchChain();
+  const name = expectedChainId === 1 ? "Ethereum" : expectedChainId === 137 ? "Polygon" : "Sepolia";
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-md border border-amber-400/40 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-200">
+      <span>Wrong network — chain roles live on {name}.</span>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="h-6 px-2 text-[11px]"
+        disabled={isPending}
+        onClick={() => switchChain({ chainId: expectedChainId })}
+      >
+        {isPending ? "Switching…" : `Switch to ${name}`}
+      </Button>
+    </div>
+  );
+}
+
 /** Inline status while a role grant/revoke runs and after `TransactionService` confirms the tx. */
 function ChainRoleTxStatus({
   loading,
@@ -426,15 +452,17 @@ function TokenChainRoleToggleRow({
   const { grantRole, isLoading: granting, error: grantErr, reset: resetGrant } = useTokenGrantRole();
   const { revokeRole, isLoading: revoking, error: revokeErr, reset: resetRevoke } = useTokenRevokeRole();
   const tokenAddress = useTokenAMAddress();
+  const walletChainId = useChainId();
+  const wrongChain = walletChainId !== EXPECTED_CHAIN_ID;
   const [localError, setLocalError] = useState<string | null>(null);
   const [confirmedTxHash, setConfirmedTxHash] = useState<Hex | null>(null);
   const loading = granting || revoking;
   const wallet = member.walletAddress;
   const disabled =
-    !wallet || !tokenAddress || loading || (isSelf && def.key === "ADMIN");
+    !wallet || !tokenAddress || wrongChain || loading || (isSelf && def.key === "ADMIN");
 
   const handleToggle = async (checked: boolean) => {
-    if (!wallet || !tokenAddress) return;
+    if (!wallet || !tokenAddress || wrongChain) return;
     setLocalError(null);
     setConfirmedTxHash(null);
     resetGrant();
@@ -494,6 +522,7 @@ function TokenChainRoleToggleRow({
         </div>
       </div>
       {errMsg && <p className="text-xs text-destructive">{errMsg}</p>}
+      {wrongChain && <WrongNetworkHint expectedChainId={EXPECTED_CHAIN_ID} />}
       <ChainRoleTxStatus
         loading={loading}
         txHash={confirmedTxHash}
@@ -685,15 +714,17 @@ function PlatformChainRoleToggleRow({
   const { grantRole, isLoading: granting, error: grantErr, reset: resetGrant } = usePlatformGrantRole();
   const { revokeRole, isLoading: revoking, error: revokeErr, reset: resetRevoke } = usePlatformRevokeRole();
   const platformAddress = usePlatformAMAddress();
+  const walletChainId = useChainId();
+  const wrongChain = walletChainId !== EXPECTED_CHAIN_ID;
   const [localError, setLocalError] = useState<string | null>(null);
   const [confirmedTxHash, setConfirmedTxHash] = useState<Hex | null>(null);
   const loading = granting || revoking;
   const wallet = member.walletAddress;
   const disabled =
-    !wallet || !platformAddress || loading || (isSelf && def.key === "ADMIN");
+    !wallet || !platformAddress || wrongChain || loading || (isSelf && def.key === "ADMIN");
 
   const handleToggle = async (checked: boolean) => {
-    if (!wallet || !platformAddress) return;
+    if (!wallet || !platformAddress || wrongChain) return;
     setLocalError(null);
     setConfirmedTxHash(null);
     resetGrant();
@@ -753,6 +784,7 @@ function PlatformChainRoleToggleRow({
         </div>
       </div>
       {errMsg && <p className="text-xs text-destructive">{errMsg}</p>}
+      {wrongChain && <WrongNetworkHint expectedChainId={EXPECTED_CHAIN_ID} />}
       <ChainRoleTxStatus
         loading={loading}
         txHash={confirmedTxHash}
