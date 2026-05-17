@@ -4,6 +4,11 @@
 # install-only + `yarn indexer` so the Next.js app never builds here (Vercel
 # owns the web app).
 
+# Nixpacks defaults image to Node 18; @clerk/nextjs (still in this lockfile)
+# requires >=20.9. Match Vercel / local toolchain.
+[variables]
+NODE_VERSION = "22"
+
 [phases.install]
 cmds = ["yarn install --frozen-lockfile"]
 
