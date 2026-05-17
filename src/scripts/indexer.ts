@@ -34,39 +34,41 @@ import { backfillAll } from "@/lib/indexer/backfill";
 import { watchAll } from "@/lib/indexer/watch";
 
 /**
- * Railway / Render / Fly often set `$PORT` and probe HTTP `/` shortly after boot.
- * The indexer has no dashboard otherwise — answering 200 avoids "deploy succeeded
- * then crashed" churn while backfill catches up from chain head.
+ * Railway / Render / Fly set `$PORT` and probe HTTP `/` almost immediately after
+ * boot. Bind and **wait until the TCP listen succeeds** before any heavy work
+ * (Postgres bootstrap, RPC); otherwise probes race ahead of `.listen()` and
+ * Railway reports "service unavailable" for five minutes straight.
  */
-function bindHostHealthProbe(): () => void {
+function bindHostHealthProbe(): Promise<() => void> {
   const raw = process.env.PORT?.trim();
-  if (!raw) return () => {};
+  if (!raw) return Promise.resolve(() => {});
 
   const port = Number(raw);
   if (!Number.isInteger(port) || port <= 0 || port > 65535) {
     console.warn("[indexer] ignoring invalid PORT=", raw);
-    return () => {};
+    return Promise.resolve(() => {});
   }
 
-  const server = http.createServer((_req, res) => {
-    res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
-    res.end("ok\n");
-  });
-
-  server.listen(port, "0.0.0.0", () => {
-    console.log(
-      `[indexer] probe listening on 0.0.0.0:${port} (no auth — internal only / tunnel)`,
-    );
-  });
-
-  return () =>
-    server.close((err) => {
-      if (err) console.warn("[indexer] probe shutdown:", err.message);
+  return new Promise((resolve, reject) => {
+    const server = http.createServer((_req, res) => {
+      res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("ok\n");
     });
+
+    server.once("error", reject);
+    server.listen(port, "0.0.0.0", () => {
+      console.log(`[indexer] probe listening on 0.0.0.0:${port}`);
+      resolve(() => {
+        server.close((err) => {
+          if (err) console.warn("[indexer] probe shutdown:", err.message);
+        });
+      });
+    });
+  });
 }
 
 async function main() {
-  const stopHealthProbe = bindHostHealthProbe();
+  const stopHealthProbe = await bindHostHealthProbe();
   console.log("[indexer] starting…");
   console.log(
     "[indexer] chains:",
