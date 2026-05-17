@@ -25,8 +25,8 @@ export type ChainRoleKey =
   | "OPERATOR";
 
 /** Coarse membership tier derived from chainRoles. Mirrors Clerk's
- *  owner/admin/member model so the UI can show a single tier badge. */
-export type ChainTier = "owner" | "admin" | "member" | "none";
+ *  owner/admin/member model so the UI can show a tier badge. */
+export type ChainTier = "owner" | "admin" | "member";
 
 /** Keys that put a member in the "admin" tier (tier 1). */
 export const ADMIN_TIER_KEYS: ReadonlySet<ChainRoleKey> = new Set([
@@ -34,15 +34,32 @@ export const ADMIN_TIER_KEYS: ReadonlySet<ChainRoleKey> = new Set([
   "TOKEN_ADMIN",
 ]);
 
-export function deriveChainTier(
+/**
+ * Returns every tier the member holds, in descending order (owner → admin →
+ * member). Owner and admin are NOT collapsed: when a wallet has both
+ * SUPER_ADMIN and PLATFORM_ADMIN/TOKEN_ADMIN, the UI must show both chips
+ * — otherwise a successful role-1 grant on an owner produces zero visual
+ * feedback. "member" only renders when the wallet has *no* higher tier —
+ * an owner who also holds COMPLIANCE already proves "has access" via the
+ * functional chip, so an extra Member badge would be redundant noise.
+ * Empty array means the member has no on-chain roles at all.
+ */
+export function deriveChainTiers(
   chainRoles: Partial<Record<ChainRoleKey, boolean>>,
-): ChainTier {
-  if (chainRoles.SUPER_ADMIN) return "owner";
+): ChainTier[] {
+  const tiers: ChainTier[] = [];
+  if (chainRoles.SUPER_ADMIN) tiers.push("owner");
   for (const k of ADMIN_TIER_KEYS) {
-    if (chainRoles[k]) return "admin";
+    if (chainRoles[k]) {
+      tiers.push("admin");
+      break;
+    }
   }
-  if (Object.values(chainRoles).some((v) => v === true)) return "member";
-  return "none";
+  if (tiers.length > 0) return tiers;
+  const hasFunctional = (Object.entries(chainRoles) as [ChainRoleKey, boolean][])
+    .some(([k, v]) => v && k !== "SUPER_ADMIN" && !ADMIN_TIER_KEYS.has(k));
+  if (hasFunctional) tiers.push("member");
+  return tiers;
 }
 
 /** One row in the permissions sheet / role reference (manifest + on-chain id). */

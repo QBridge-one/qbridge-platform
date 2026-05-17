@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   ADMIN_TIER_KEYS,
-  deriveChainTier,
+  deriveChainTiers,
   type TeamMember,
   type ChainRoleKey,
   type ChainTier,
@@ -268,11 +268,13 @@ function ChainRolesCell({
   if (chains.length === 0) {
     return <span className="text-xs text-muted-foreground">No roles</span>;
   }
-  const tier = deriveChainTier(member.chainRoles);
+  const tiers = deriveChainTiers(member.chainRoles);
   const functional = functionalChainKeys(chains);
   return (
     <div className="flex flex-wrap items-center gap-1">
-      <TierBadge tier={tier} />
+      {tiers.map((t) => (
+        <TierBadge key={t} tier={t} />
+      ))}
       {functional.map((k) => (
         <ChainRoleBadge
           key={k}
@@ -286,11 +288,10 @@ function ChainRolesCell({
 }
 
 /** Clerk-style coarse tier (Owner / Admin / Member) derived from chainRoles.
- *  Hidden when the member has only functional roles ("none" tier would
- *  never render — we short-circuit above when chains is empty). */
+ *  Owner + Admin can render together — owner does NOT subsume admin in the
+ *  badge column, otherwise granting role 1 to an owner is invisible. */
 function TierBadge({ tier }: { tier: ChainTier }) {
-  if (tier === "none") return null;
-  const cfg: Record<Exclude<ChainTier, "none">, { label: string; cls: string }> = {
+  const cfg: Record<ChainTier, { label: string; cls: string }> = {
     owner: {
       label: "Owner",
       cls: "border-transparent bg-violet-300 text-violet-950 dark:bg-violet-800/60 dark:text-violet-100",

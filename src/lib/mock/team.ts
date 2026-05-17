@@ -37,44 +37,55 @@ export const AVATAR_VARIANT_CLASS: Record<AvatarVariant, string> = {
 };
 
 /** Token AccessManager role catalog shown in the issuer workspace UI.
- *  SUPER_ADMIN is intentionally omitted — it's a governance role and
- *  must be granted via Etherscan / a dedicated admin tool. */
+ *
+ *  ⚠ SUPER_ADMIN is exposed here for dev/staging convenience. In production
+ *  this entry must be removed — role 0 is OZ ADMIN_ROLE; granting / revoking
+ *  it bricks the token's AccessManager if mishandled and must move to the
+ *  issuer factory / governance flow. Self-revoke is already guarded by
+ *  isSelfLockoutKey() in TeamMemberSheet. */
 export const CHAIN_ROLE_DEFS: ReadonlyArray<TeamOnChainRoleDef> = [
+  {
+    key: "SUPER_ADMIN",
+    roleId: TOKEN_ROLES.SUPER_ADMIN,
+    label: "Super Admin",
+    description:
+      "OZ ADMIN_ROLE — full control of this token's AccessManager. Dev/staging only; production grants go through the issuer factory.",
+  },
   {
     key: "TOKEN_ADMIN",
     roleId: TOKEN_ROLES.TOKEN_ADMIN,
-    label: "TOKEN ADMIN",
+    label: "Token Admin",
     description:
       "Grants and revokes the operational roles below. Use for the issuer's primary admins.",
   },
   {
     key: "MINTER",
     roleId: TOKEN_ROLES.MINTER,
-    label: "MINTER",
+    label: "Minter",
     description: "Can mint and burn tokens for this asset.",
   },
   {
     key: "COMPLIANCE",
     roleId: TOKEN_ROLES.COMPLIANCE,
-    label: "COMPLIANCE",
+    label: "Compliance",
     description: "Can update transfer restrictions and investor eligibility rules.",
   },
   {
     key: "ENFORCER",
     roleId: TOKEN_ROLES.ENFORCER,
-    label: "ENFORCER",
+    label: "Enforcer",
     description: "Can freeze or unfreeze individual investor addresses.",
   },
   {
     key: "PAUSER",
     roleId: TOKEN_ROLES.PAUSER,
-    label: "PAUSER",
+    label: "Pauser",
     description: "Can pause all token transfers in an emergency.",
   },
   {
     key: "AUDITOR",
     roleId: TOKEN_ROLES.AUDITOR,
-    label: "AUDITOR",
+    label: "Auditor",
     description: "Read-only access — can view all on-chain events and logs.",
   },
 ];

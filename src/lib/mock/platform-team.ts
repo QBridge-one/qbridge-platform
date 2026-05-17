@@ -10,31 +10,43 @@ import { CHAIN_ROLE_BADGE_CLASS } from "@/lib/mock/team";
 export const PLATFORM_TEAM_BADGE_CLASS = CHAIN_ROLE_BADGE_CLASS;
 
 /** Platform AccessManager role catalog shown in the ops UI.
- *  SUPER_ADMIN is intentionally omitted — granted via governance only. */
+ *
+ *  ⚠ SUPER_ADMIN is exposed here for dev/staging convenience. In production
+ *  this entry must be removed — role 0 is OZ ADMIN_ROLE; granting / revoking
+ *  it bricks the AccessManager if mishandled and must move to governance
+ *  (multisig / Etherscan). Self-revoke is already guarded by
+ *  isSelfLockoutKey() in TeamMemberSheet. */
 export const PLATFORM_TEAM_ROLE_DEFS: ReadonlyArray<TeamOnChainRoleDef> = [
+  {
+    key: "SUPER_ADMIN",
+    roleId: PLATFORM_ROLES.SUPER_ADMIN,
+    label: "Super Admin",
+    description:
+      "OZ ADMIN_ROLE — full control of the platform AccessManager. Dev/staging only; production grants go through governance.",
+  },
   {
     key: "PLATFORM_ADMIN",
     roleId: PLATFORM_ROLES.PLATFORM_ADMIN,
-    label: "PLATFORM ADMIN",
+    label: "Platform Admin",
     description:
       "Grants and revokes the operational platform roles below. Day-to-day QBridge admin.",
   },
   {
     key: "COMPLIANCE",
     roleId: PLATFORM_ROLES.COMPLIANCE,
-    label: "COMPLIANCE",
+    label: "Compliance",
     description: "QBridge compliance — policy checks, regulatory workflows.",
   },
   {
     key: "OPERATOR",
     roleId: PLATFORM_ROLES.OPERATOR,
-    label: "OPERATOR",
+    label: "Operator",
     description: "Platform operators — day-to-day QBridge console operations.",
   },
   {
     key: "AUDITOR",
     roleId: PLATFORM_ROLES.AUDITOR,
-    label: "AUDITOR",
+    label: "Auditor",
     description: "Read-only access to platform audit views and on-chain logs.",
   },
 ];

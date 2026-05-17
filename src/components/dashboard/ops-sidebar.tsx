@@ -44,15 +44,15 @@ function opsRoleBadge(
   }
   switch (fallback) {
     case "SUPER_ADMIN":
-      return "Platform owner";
+      return "Super Admin";
     case "PLATFORM_ADMIN":
-      return "Platform admin";
+      return "Platform Admin";
     case "COMPLIANCE":
-      return "Platform compliance";
+      return "Compliance";
     case "OPERATOR":
-      return "Platform operator";
+      return "Operator";
     default:
-      return "Platform auditor";
+      return "Auditor";
   }
 }
 
