@@ -1,0 +1,15 @@
+# Indexer-only deploy (Railway / Nixpacks).
+#
+# Railpack detects `next build` from this repo; Nixpacks + this file forces
+# install-only + `yarn indexer` so the Next.js app never builds here (Vercel
+# owns the web app).
+
+[phases.install]
+cmds = ["yarn install --frozen-lockfile"]
+
+[phases.build]
+dependsOn = ["install"]
+cmds = ["echo '[qbridge indexer] skipping Next.js build — web ships on Vercel'"]
+
+[start]
+cmd = "yarn indexer"
