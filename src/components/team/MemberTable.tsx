@@ -186,26 +186,31 @@ function StatusCell({ status }: { status: TeamMember["status"] }) {
 }
 
 function PlatformBadge({ member }: { member: TeamMember }) {
-  // Prefer the granular off-chain role set when present. Show the
-  // primary role label (first non-baseline if available) plus a
-  // "+N" overflow when the user has multiple. Fall back to the
-  // legacy admin/member chip when no appRoles are set.
+  // Prefer the granular off-chain role set when present. The baseline
+  // *_member role is implicit for anyone who holds another role
+  // (admin / compliance / etc. obviously implies membership), so we
+  // drop it from the "extras" count unless it's the only role the
+  // member has. Fall back to the legacy admin/member chip when no
+  // appRoles are set.
   const appRoles = member.appRoles ?? [];
   const isAdminLike = (r: string) => r.endsWith("_admin");
   const isBaseline = (r: string) => r === "issuer_member" || r === "ops_member";
 
   if (appRoles.length > 0) {
-    // Pick the most informative role to show first.
-    const sorted = [...appRoles].sort((a, b) => {
+    const nonBaseline = appRoles.filter((r) => !isBaseline(r));
+    const display = nonBaseline.length > 0 ? nonBaseline : appRoles;
+    const sorted = [...display].sort((a, b) => {
       if (isAdminLike(a) && !isAdminLike(b)) return -1;
       if (isAdminLike(b) && !isAdminLike(a)) return 1;
-      if (isBaseline(a) && !isBaseline(b)) return 1;
-      if (isBaseline(b) && !isBaseline(a)) return -1;
       return a.localeCompare(b);
     });
     const primary = sorted[0];
     const extra = sorted.length - 1;
     const isAdmin = isAdminLike(primary);
+    const extraLabels = sorted
+      .slice(1)
+      .map((r) => APP_ROLE_LABELS[r as keyof typeof APP_ROLE_LABELS])
+      .join(", ");
     return (
       <span className="flex flex-wrap items-center gap-1">
         <Badge
@@ -219,7 +224,11 @@ function PlatformBadge({ member }: { member: TeamMember }) {
           {APP_ROLE_LABELS[primary]}
         </Badge>
         {extra > 0 && (
-          <Badge variant="secondary" className="text-[10px] font-medium">
+          <Badge
+            variant="secondary"
+            className="text-[10px] font-medium"
+            title={extraLabels}
+          >
             +{extra}
           </Badge>
         )}
