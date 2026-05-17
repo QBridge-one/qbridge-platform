@@ -1,0 +1,10 @@
+# Keep images small / avoid leaking secrets.
+node_modules
+.next
+.vercel
+.git
+.idea
+.cursor
+*.log
+.env
+.env.*
