@@ -1,4 +1,0 @@
-# Fallback only: if a host ignores Dockerfile and falls back to Nixpacks / Railpack,
-# force Node ≥20 so `yarn install` passes @clerk/nextjs engines (>=20.9).
-[variables]
-NODE_VERSION = "22"

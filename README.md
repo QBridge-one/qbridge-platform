@@ -2,6 +2,8 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 Application source lives under **`src/`** (`src/app`, `src/components`, `src/lib`, `src/types`, `src/config`). The `@/*` path alias maps to `src/*`.
 
+**Postgres-backed chain-role tables (SSR team pages):** [`docs/database-and-chain-roles.md`](docs/database-and-chain-roles.md) — Drizzle schema, indexer worker (`yarn indexer`), Neon, Railway Dockerfile, and what reads chain vs DB.
+
 ## Getting Started
 
 First, run the development server:
