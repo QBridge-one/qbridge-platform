@@ -27,12 +27,46 @@
 // (notably @/lib/db) reads DATABASE_URL at init.
 import "./_env";
 
+import * as http from "node:http";
 import { INDEXER_CHAINS } from "@/lib/indexer/chains";
 import { bootstrapAccessManagers } from "@/lib/indexer/bootstrap";
 import { backfillAll } from "@/lib/indexer/backfill";
 import { watchAll } from "@/lib/indexer/watch";
 
+/**
+ * Railway / Render / Fly often set `$PORT` and probe HTTP `/` shortly after boot.
+ * The indexer has no dashboard otherwise — answering 200 avoids "deploy succeeded
+ * then crashed" churn while backfill catches up from chain head.
+ */
+function bindHostHealthProbe(): () => void {
+  const raw = process.env.PORT?.trim();
+  if (!raw) return () => {};
+
+  const port = Number(raw);
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+    console.warn("[indexer] ignoring invalid PORT=", raw);
+    return () => {};
+  }
+
+  const server = http.createServer((_req, res) => {
+    res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+    res.end("ok\n");
+  });
+
+  server.listen(port, "0.0.0.0", () => {
+    console.log(
+      `[indexer] probe listening on 0.0.0.0:${port} (no auth — internal only / tunnel)`,
+    );
+  });
+
+  return () =>
+    server.close((err) => {
+      if (err) console.warn("[indexer] probe shutdown:", err.message);
+    });
+}
+
 async function main() {
+  const stopHealthProbe = bindHostHealthProbe();
   console.log("[indexer] starting…");
   console.log(
     "[indexer] chains:",
@@ -53,6 +87,7 @@ async function main() {
   const shutdown = (sig: string) => {
     console.log(`[indexer] ${sig} — shutting down`);
     stop();
+    stopHealthProbe();
     process.exit(0);
   };
   process.on("SIGINT", () => shutdown("SIGINT"));
