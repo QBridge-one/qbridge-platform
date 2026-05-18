@@ -74,8 +74,8 @@ type Renderer<K extends NotificationKind> = (payload: NotificationPayloads[K]) =
 
 const renderers: { [K in NotificationKind]: Renderer<K> } = {
   "issuer.kyb_submitted": (p) => {
-    const title = `New KYB submission: ${p.issuerOrgName}`;
-    const body = `${p.legalEntityName} (${p.jurisdiction}) submitted KYB and is awaiting review.`;
+    const title = `New issuer application: ${p.issuerOrgName}`;
+    const body = `${p.legalEntityName} (${p.jurisdiction}) submitted an issuer application and is awaiting review.`;
     // Queue is a single page; ?focus= tells the client to auto-open
     // the review drawer for this org on landing.
     const actionUrl = `/ops/admin/issuers?focus=${encodeURIComponent(p.issuerOrgId)}`;
@@ -93,8 +93,8 @@ const renderers: { [K in NotificationKind]: Renderer<K> } = {
     };
   },
   "issuer.kyb_approved": (p) => {
-    const title = `KYB approved for ${p.issuerOrgName}`;
-    const body = `Your KYB application has been approved. Your workspace is now active.`;
+    const title = `Application approved for ${p.issuerOrgName}`;
+    const body = `Your issuer application has been approved. Your workspace is now active.`;
     const actionUrl = `/workspace`;
     return {
       title,
@@ -110,11 +110,11 @@ const renderers: { [K in NotificationKind]: Renderer<K> } = {
     };
   },
   "issuer.kyb_rejected": (p) => {
-    const title = `KYB rejected for ${p.issuerOrgName}`;
+    const title = `Action required on application for ${p.issuerOrgName}`;
     const reasonLine = p.reason
       ? `Reason: ${p.reason}`
       : `Please contact QBridge support for details.`;
-    const body = `Your KYB application was not approved. ${reasonLine}`;
+    const body = `Your issuer application was not approved. ${reasonLine}`;
     const actionUrl = `/onboarding/kyb`;
     return {
       title,
@@ -123,11 +123,11 @@ const renderers: { [K in NotificationKind]: Renderer<K> } = {
       subject: title,
       html: `
         <h2>${escapeHtml(title)}</h2>
-        <p>${escapeHtml(`Your KYB application was not approved.`)}</p>
+        <p>${escapeHtml(`Your issuer application was not approved.`)}</p>
         <p>${escapeHtml(reasonLine)}</p>
         <p><a href="${escapeAttr(actionUrl)}">Update and resubmit</a></p>
       `,
-      text: `${title}\n\nYour KYB application was not approved.\n${reasonLine}\n\nResubmit: ${actionUrl}`,
+      text: `${title}\n\nYour issuer application was not approved.\n${reasonLine}\n\nResubmit: ${actionUrl}`,
     };
   },
 };

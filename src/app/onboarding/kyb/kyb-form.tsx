@@ -116,8 +116,8 @@ export function KybForm({ orgName, initialStatus }: Props) {
         {busy ? "Submitting…" : "Submit for review"}
       </Button>
       <p className="text-muted-foreground text-center text-xs">
-        Please ensure these details match your incorporation records — verification continues out of band with QBridge
-        onboarding.
+        Please ensure these details match your incorporation records. Full KYB verification (beneficial
+        owners, sanctions screening) will follow as a separate step once this application is approved.
       </p>
     </form>
   );

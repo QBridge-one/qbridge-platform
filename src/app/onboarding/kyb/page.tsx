@@ -25,7 +25,7 @@ export default async function IssuerKybPage() {
     <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col justify-center gap-8 px-6 py-16">
       <header className="space-y-2 text-center">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Issuer verification
+          Issuer application
         </p>
         <h1 className="text-2xl font-semibold tracking-tight">
           {kybStatus === "submitted"
@@ -34,8 +34,8 @@ export default async function IssuerKybPage() {
         </h1>
         <p className="text-sm text-muted-foreground leading-relaxed">
           {kybStatus === "submitted"
-            ? "QBridge Compliance will review your KYB submission. You'll get workspace access once approved."
-            : "We need a few details before you can use the issuer workspace. This usually takes one business day after submission."}
+            ? "QBridge will review your application. You'll get workspace access once approved."
+            : "We need a few details before you can use the issuer workspace. Full KYB verification will come as a separate step after this initial application is approved."}
         </p>
       </header>
 
@@ -60,8 +60,8 @@ export default async function IssuerKybPage() {
             </div>
           </dl>
           <p className="text-muted-foreground text-xs">
-            QBridge Compliance will be in touch if anything is missing. You'll receive an in-app
-            notification and an email as soon as the application is reviewed.
+            QBridge will be in touch if anything is missing. You'll receive an in-app notification
+            and an email as soon as your application is reviewed.
           </p>
           <Button variant="outline" className="w-full" asChild>
             <Link href="/select-workspace">Switch workspace</Link>

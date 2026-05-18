@@ -70,9 +70,10 @@ export default async function OpsIssuerReviewPage({
   return (
     <div className="space-y-6 p-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">Issuer review</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Issuer applications</h1>
         <p className="text-sm text-muted-foreground">
-          Approve or reject pending issuer KYB submissions. Approvals unlock the issuer workspace.
+          Review pending issuer applications. Approvals unlock the issuer workspace; rejections
+          require a reason and let the issuer resubmit.
         </p>
       </header>
       <IssuerReviewQueue

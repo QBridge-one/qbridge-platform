@@ -85,7 +85,7 @@ const NAV_ITEMS: NavItem[] = [
     requires: "ops:view",
   },
   {
-    label: "Issuer review",
+    label: "Issuer applications",
     href: `${BASE}/admin/issuers`,
     icon: Building2,
     badge: "NEW",
