@@ -98,7 +98,7 @@ async function main() {
   const stopEmailDrain = startEmailOutboxDrainLoop(
     { notification: drizzleNotificationAdapter, email: pickEmailAdapter() },
     {
-      intervalMs: 120_000,
+      intervalMs: 30_000,
       logger: (msg) => console.log(`[email-outbox] ${msg}`),
     },
   );
