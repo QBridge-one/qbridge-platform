@@ -4,9 +4,10 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireOrg } from "@/lib/auth/server";
+import { auditLogAdapter, organizationAdapter } from "@/lib/container.server";
 import { errorResponse } from "@/lib/auth/api";
-import { organizationAdapter } from "@/lib/container.server";
+import { requireOrg } from "@/lib/auth/server";
+import { submitIssuerKybApplication } from "@/lib/services/onboarding.service";
 
 const BodySchema = z.object({
   legalEntityName: z.string().trim().min(2).max(200),
@@ -35,22 +36,23 @@ const BodySchema = z.object({
 export async function POST(req: Request) {
   try {
     const session = await requireOrg("issuer");
-    const st = session.activeOrg.kybStatus;
-    if (st === "approved" || st === "submitted") {
-      return NextResponse.json({ error: "KYB submission is already finalized or awaiting review." }, { status: 409 });
-    }
     const raw = await req.json();
     const parsed = BodySchema.safeParse(raw);
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid body", details: parsed.error.flatten() }, { status: 400 });
     }
-    const orgId = session.activeOrg.id;
-    await organizationAdapter.submitIssuerKyb(orgId, {
-      legalEntityName: parsed.data.legalEntityName,
-      jurisdiction: parsed.data.jurisdiction,
-      companyWebsite: parsed.data.companyWebsite ?? null,
-      notes: parsed.data.notes ?? null,
-    });
+    await submitIssuerKybApplication(
+      { organization: organizationAdapter, audit: auditLogAdapter },
+      {
+        session,
+        body: {
+          legalEntityName: parsed.data.legalEntityName,
+          jurisdiction: parsed.data.jurisdiction,
+          companyWebsite: parsed.data.companyWebsite ?? null,
+          notes: parsed.data.notes ?? null,
+        },
+      },
+    );
     return NextResponse.json({ ok: true });
   } catch (err) {
     return errorResponse(err);

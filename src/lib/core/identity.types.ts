@@ -209,6 +209,7 @@ export type AuditAction =
   | "wallet.unlinked"
   | "chain_role.granted"
   | "chain_role.revoked"
+  | "kyb.submitted"
   | "ops.action";
 
 export interface AuditEntry {

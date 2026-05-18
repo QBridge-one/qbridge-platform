@@ -5,7 +5,7 @@
 // Always wrap in a DomainError with a meaningful code.
 // ============================================================
 
-import { DomainError, type DomainErrorCode } from "./types";
+import { DomainError } from "./types";
 
 // ─── Factory helpers ─────────────────────────────────────────
 export function walletNotConnected(): DomainError {
@@ -122,6 +122,13 @@ export function inviteAlreadyExists(email: string): DomainError {
   return new DomainError(
     "INVITE_ALREADY_EXISTS",
     `An invite for ${email} already exists.`,
+  );
+}
+
+export function issuerKybConflict(): DomainError {
+  return new DomainError(
+    "ISSUER_KYB_CONFLICT",
+    "KYB submission is already finalized or awaiting review.",
   );
 }
 
