@@ -13,6 +13,7 @@ import type {
   OrgKind,
   OrgMember,
 } from "../core/identity.types";
+import type { IssuerKybSubmitBody } from "../core/issuer-kyb";
 
 export interface OrganizationPort {
   // ── Read ─────────────────────────────────────────────────
@@ -37,6 +38,9 @@ export interface OrganizationPort {
     input: InviteInput,
   ): Promise<Invite>;
   revokeInvite(orgId: string, inviteId: string): Promise<void>;
+
+  /** Issuer onboarding: persists snapshot + sets kybStatus to `submitted`. */
+  submitIssuerKyb(orgId: string, body: IssuerKybSubmitBody): Promise<AppOrg>;
 
   // ── Membership ───────────────────────────────────────────
   /** @deprecated Use setMemberRoles. Sets the primary role to a single

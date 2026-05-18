@@ -22,6 +22,7 @@ import type {
   OrgKind,
   OrgMember,
 } from "../../core/identity.types";
+import type { IssuerKybSubmitBody } from "../../core/issuer-kyb";
 import {
   forbidden,
   inviteAlreadyExists,
@@ -29,6 +30,7 @@ import {
   membershipNotFound,
   orgNotFound,
 } from "../../core/errors";
+import { kybFieldsFromOrganizationPublicMeta } from "../clerk/issuer-metadata";
 import {
   mapRoleFromClerk,
   mapRoleToClerk,
@@ -95,6 +97,7 @@ function pickIssuerId(meta: unknown): string | null {
 
 function mapOrg(o: ClerkOrg): AppOrg {
   const kind = mapKindFromMetadata(o.publicMetadata);
+  const kyb = kybFieldsFromOrganizationPublicMeta(kind, o.publicMetadata);
   return {
     id: o.id,
     authOrgId: o.id,
@@ -102,6 +105,8 @@ function mapOrg(o: ClerkOrg): AppOrg {
     slug: o.slug ?? o.id,
     kind,
     issuerId: pickIssuerId(o.publicMetadata),
+    kybStatus: kyb.kybStatus,
+    kybApplication: kyb.kybApplication,
     createdAt: new Date(o.createdAt).toISOString(),
   };
 }
@@ -209,7 +214,10 @@ class ClerkOrganizationAdapter implements OrganizationPort {
       name: input.name,
       slug: input.slug,
       createdBy: input.creatorUserId,
-      publicMetadata: { kind: input.kind, issuerId: input.issuerId ?? null },
+      publicMetadata:
+        input.kind === "issuer"
+          ? { kind: "issuer", issuerId: input.issuerId ?? null, kybStatus: "none" }
+          : { kind: input.kind, issuerId: input.issuerId ?? null },
     });
     return mapOrg(o);
   }
@@ -258,6 +266,38 @@ class ClerkOrganizationAdapter implements OrganizationPort {
       if (/not.found|404/i.test(msg)) throw inviteNotFound(inviteId);
       throw err;
     }
+  }
+
+  async submitIssuerKyb(orgId: string, body: IssuerKybSubmitBody): Promise<AppOrg> {
+    const cc = await clerkClient();
+    const o = await cc.organizations.getOrganization({ organizationId: orgId }).catch(() => null);
+    if (!o) throw orgNotFound(orgId);
+    const kind = mapKindFromMetadata(o.publicMetadata);
+    if (kind !== "issuer") {
+      throw forbidden("Only issuer workspaces go through KYB onboarding.");
+    }
+    const existing =
+      o.publicMetadata != null && typeof o.publicMetadata === "object"
+        ? { ...(o.publicMetadata as Record<string, unknown>) }
+        : {};
+    const submittedAt = new Date().toISOString();
+    const snapshot = {
+      legalEntityName: body.legalEntityName,
+      jurisdiction: body.jurisdiction,
+      companyWebsite: body.companyWebsite ?? null,
+      notes: body.notes ?? null,
+      submittedAt,
+    };
+    await cc.organizations.updateOrganization(orgId, {
+      publicMetadata: {
+        ...existing,
+        kind: "issuer",
+        kybStatus: "submitted",
+        kybApplication: snapshot,
+      },
+    });
+    const fresh = await cc.organizations.getOrganization({ organizationId: orgId });
+    return mapOrg(fresh);
   }
 
   async updateMemberRole(

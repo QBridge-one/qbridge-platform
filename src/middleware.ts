@@ -20,8 +20,10 @@ const PUBLIC_PATHS = /^\/(api\/webhooks\/.*|_next\/.*|favicon\.ico|sign-in|sign-
 const isProtectedRoute = createRouteMatcher([
   "/ops(.*)",
   "/workspace(.*)",
+  "/onboarding(.*)",
   "/api/team/(.*)",
   "/api/wallet/(.*)",
+  "/api/onboarding/(.*)",
   "/api/session",
 ]);
 

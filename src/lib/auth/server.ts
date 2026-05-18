@@ -12,6 +12,7 @@ import "server-only";
 
 import { identityAdapter } from "../container.server";
 import type { AppSession, OrgKind } from "../core/identity.types";
+import { issuerWorkspaceKybBlocks } from "../core/issuer-kyb";
 import { forbidden, unauthenticated } from "../core/errors";
 import { can, type Permission, roleMatchesPlane } from "./permissions";
 
@@ -43,4 +44,11 @@ export async function requirePermission(
   const s = await requireOrg();
   if (!can(s.appRoles, perm)) throw forbidden(`Missing permission: ${perm}`);
   return s;
+}
+
+/** Enforce issuer KYB approved for an active issuer org (ops no-op). */
+export function assertIssuerOrgKybApproved(activeOrg: NonNullable<AppSession["activeOrg"]>): void {
+  if (issuerWorkspaceKybBlocks(activeOrg.kind, activeOrg.kybStatus)) {
+    throw forbidden("Complete issuer verification before using this resource.");
+  }
 }

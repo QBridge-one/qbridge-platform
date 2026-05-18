@@ -4,7 +4,7 @@
 
 import { NextResponse } from "next/server";
 import { auditLogAdapter, organizationAdapter } from "@/lib/container.server";
-import { requireOrg, requirePermission } from "@/lib/auth/server";
+import { assertIssuerOrgKybApproved, requireOrg, requirePermission } from "@/lib/auth/server";
 import { errorResponse } from "@/lib/auth/api";
 import type { Permission } from "@/lib/auth/permissions";
 
@@ -24,6 +24,7 @@ export async function DELETE(
     }
     const base = await requireOrg();
     const session = await requirePermission(PERM[base.activeOrg.kind]);
+    assertIssuerOrgKybApproved(session.activeOrg);
     await organizationAdapter.revokeInvite(session.activeOrg.id, id);
     await auditLogAdapter.append({
       orgId: session.activeOrg.id,

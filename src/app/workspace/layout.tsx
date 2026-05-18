@@ -15,6 +15,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/server";
 import { can } from "@/lib/auth/permissions";
+import { issuerWorkspaceKybBlocks } from "@/lib/core/issuer-kyb";
 
 export const metadata: Metadata = {
   title: {
@@ -32,6 +33,9 @@ export default async function WorkspaceLayout({
   if (!session) redirect("/sign-in");
   if (!session.activeOrg) redirect("/select-workspace");
   if (session.activeOrg.kind !== "issuer") redirect("/select-workspace");
+  if (issuerWorkspaceKybBlocks(session.activeOrg.kind, session.activeOrg.kybStatus)) {
+    redirect("/onboarding/kyb");
+  }
   if (!can(session.appRoles, "workspace:view")) redirect("/select-workspace");
 
   return (

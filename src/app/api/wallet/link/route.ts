@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auditLogAdapter, walletLinkAdapter } from "@/lib/container.server";
-import { requireSession } from "@/lib/auth/server";
+import { assertIssuerOrgKybApproved, requireSession } from "@/lib/auth/server";
 import { errorResponse } from "@/lib/auth/api";
 
 const LinkSchema = z.object({
@@ -20,6 +20,10 @@ const LinkSchema = z.object({
 export async function POST(request: Request) {
   try {
     const session = await requireSession();
+    const active = session.activeOrg;
+    if (active?.kind === "issuer") {
+      assertIssuerOrgKybApproved(active);
+    }
     const body = await request.json();
     const parsed = LinkSchema.safeParse(body);
     if (!parsed.success) {
@@ -50,6 +54,10 @@ export async function POST(request: Request) {
 export async function DELETE() {
   try {
     const session = await requireSession();
+    const active = session.activeOrg;
+    if (active?.kind === "issuer") {
+      assertIssuerOrgKybApproved(active);
+    }
     await walletLinkAdapter.unlink(session.user.id);
     await auditLogAdapter.append({
       orgId: session.activeOrg?.id ?? null,

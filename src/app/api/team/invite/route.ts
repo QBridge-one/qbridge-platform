@@ -6,7 +6,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auditLogAdapter, organizationAdapter } from "@/lib/container.server";
-import { requireOrg, requirePermission } from "@/lib/auth/server";
+import { assertIssuerOrgKybApproved, requireOrg, requirePermission } from "@/lib/auth/server";
 import { errorResponse } from "@/lib/auth/api";
 import { APP_ROLES, type AppRole } from "@/lib/core/identity.types";
 import type { Permission } from "@/lib/auth/permissions";
@@ -68,6 +68,7 @@ export async function POST(request: Request) {
   try {
     const base = await requireOrg();
     const session = await requirePermission(INVITE_PERM[base.activeOrg.kind]);
+    assertIssuerOrgKybApproved(session.activeOrg);
 
     const body = await request.json();
     const parsed = InviteSchema.safeParse(body);
@@ -126,6 +127,7 @@ export async function GET() {
   try {
     const base = await requireOrg();
     const session = await requirePermission(VIEW_PERM[base.activeOrg.kind]);
+    assertIssuerOrgKybApproved(session.activeOrg);
     const invites = await organizationAdapter.listInvites(session.activeOrg.id);
     return NextResponse.json({ ok: true, invites });
   } catch (err) {

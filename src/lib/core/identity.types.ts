@@ -6,6 +6,7 @@
 // ============================================================
 
 import type { Address } from "./types";
+import type { IssuerKybApplication, IssuerKybStatus } from "./issuer-kyb";
 
 // ─── Plane ───────────────────────────────────────────────────
 // Two distinct planes of access in QBridge.
@@ -93,6 +94,10 @@ export interface AppOrg {
   kind: OrgKind;
   /** Optional issuer linkage (issuer registry / KYB record id). */
   issuerId: string | null;
+  /** Issuer org only: KYB onboarding state sourced from Clerk org publicMetadata.kybStatus. Null for ops workspaces. */
+  kybStatus: IssuerKybStatus | null;
+  /** Snapshot of last submission (issuer org); null until first submit or if cleared. */
+  kybApplication: IssuerKybApplication | null;
   createdAt: string;
 }
 

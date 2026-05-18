@@ -9,6 +9,7 @@ import "server-only";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import type { IdentityPort } from "../../ports/identity.port";
 import type { AppOrg, AppRole, AppSession, AppUser } from "../../core/identity.types";
+import { kybFieldsFromOrganizationPublicMeta } from "../clerk/issuer-metadata";
 import { isAppRole } from "../../core/identity.types";
 import { unauthenticated } from "../../core/errors";
 
@@ -95,6 +96,7 @@ class ClerkIdentityAdapter implements IdentityPort {
       const cc = await clerkClient();
       const o = await cc.organizations.getOrganization({ organizationId: a.orgId });
       const kind = mapKindFromMetadata(o.publicMetadata);
+      const kyb = kybFieldsFromOrganizationPublicMeta(kind, o.publicMetadata);
       activeOrg = {
         id: o.id,
         authOrgId: o.id,
@@ -102,6 +104,8 @@ class ClerkIdentityAdapter implements IdentityPort {
         slug: o.slug ?? o.id,
         kind,
         issuerId: pickIssuerId(o.publicMetadata),
+        kybStatus: kyb.kybStatus,
+        kybApplication: kyb.kybApplication,
         createdAt: new Date(o.createdAt).toISOString(),
       };
       // Prefer granular appRoles from membership metadata. Look up the

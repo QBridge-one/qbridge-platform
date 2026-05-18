@@ -13,6 +13,7 @@ import type {
   OrgKind,
   OrgMember,
 } from "../../core/identity.types";
+import type { IssuerKybSubmitBody } from "../../core/issuer-kyb";
 import {
   forbidden,
   inviteAlreadyExists,
@@ -72,6 +73,13 @@ class MemoryOrganizationAdapter implements OrganizationPort {
     if (!memoryOrganizationStore.getOrg(orgId)) throw orgNotFound(orgId);
     const inv = memoryOrganizationStore.setInviteStatus(orgId, inviteId, "revoked");
     if (!inv) throw inviteNotFound(inviteId);
+  }
+
+  async submitIssuerKyb(orgId: string, body: IssuerKybSubmitBody): Promise<AppOrg> {
+    const org = memoryOrganizationStore.getOrg(orgId);
+    if (!org) throw orgNotFound(orgId);
+    if (org.kind !== "issuer") throw forbidden("Only issuer workspaces go through KYB onboarding.");
+    return memoryOrganizationStore.submitIssuerKyb(orgId, body);
   }
 
   async updateMemberRole(

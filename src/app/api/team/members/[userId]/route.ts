@@ -6,7 +6,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auditLogAdapter, organizationAdapter } from "@/lib/container.server";
-import { requireOrg, requirePermission } from "@/lib/auth/server";
+import { assertIssuerOrgKybApproved, requireOrg, requirePermission } from "@/lib/auth/server";
 import { errorResponse } from "@/lib/auth/api";
 import { APP_ROLES, type AppRole } from "@/lib/core/identity.types";
 import type { Permission } from "@/lib/auth/permissions";
@@ -39,6 +39,7 @@ export async function PATCH(
     const { userId } = await context.params;
     const base = await requireOrg();
     const session = await requirePermission(CHANGE[base.activeOrg.kind]);
+    assertIssuerOrgKybApproved(session.activeOrg);
     const body = await request.json();
     const parsed = RoleSchema.safeParse(body);
     if (!parsed.success) {
@@ -75,6 +76,7 @@ export async function DELETE(
     const { userId } = await context.params;
     const base = await requireOrg();
     const session = await requirePermission(REMOVE[base.activeOrg.kind]);
+    assertIssuerOrgKybApproved(session.activeOrg);
     await organizationAdapter.removeMember(session.activeOrg.id, userId);
     await auditLogAdapter.append({
       orgId: session.activeOrg.id,
