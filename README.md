@@ -4,6 +4,8 @@ Application source lives under **`src/`** (`src/app`, `src/components`, `src/lib
 
 **Postgres-backed chain-role tables (SSR team pages):** [`docs/database-and-chain-roles.md`](docs/database-and-chain-roles.md) — Drizzle schema, indexer worker (`yarn indexer`), Neon, Railway Dockerfile, and what reads chain vs DB.
 
+**Notifications & email pipeline:** [`docs/notifications-and-email.md`](docs/notifications-and-email.md) — providers (Clerk / Neon / Vercel / Railway / Resend / Zoho), notification fanout, email outbox, local-dev vs production setup, full env-var reference, troubleshooting.
+
 ## Getting Started
 
 First, run the development server:
