@@ -106,6 +106,7 @@ class ClerkIdentityAdapter implements IdentityPort {
         issuerId: pickIssuerId(o.publicMetadata),
         kybStatus: kyb.kybStatus,
         kybApplication: kyb.kybApplication,
+        kybReview: kyb.kybReview,
         createdAt: new Date(o.createdAt).toISOString(),
       };
       // Prefer granular appRoles from membership metadata. Look up the

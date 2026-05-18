@@ -6,7 +6,11 @@
 // ============================================================
 
 import type { Address } from "./types";
-import type { IssuerKybApplication, IssuerKybStatus } from "./issuer-kyb";
+import type {
+  IssuerKybApplication,
+  IssuerKybReview,
+  IssuerKybStatus,
+} from "./issuer-kyb";
 
 // ─── Plane ───────────────────────────────────────────────────
 // Two distinct planes of access in QBridge.
@@ -98,6 +102,9 @@ export interface AppOrg {
   kybStatus: IssuerKybStatus | null;
   /** Snapshot of last submission (issuer org); null until first submit or if cleared. */
   kybApplication: IssuerKybApplication | null;
+  /** Latest decision metadata (approved/rejected, reviewer, reason). Null
+   *  while pending or before any decision has been recorded. */
+  kybReview: IssuerKybReview | null;
   createdAt: string;
 }
 
@@ -210,6 +217,8 @@ export type AuditAction =
   | "chain_role.granted"
   | "chain_role.revoked"
   | "kyb.submitted"
+  | "kyb.approved"
+  | "kyb.rejected"
   | "ops.action";
 
 export interface AuditEntry {

@@ -14,7 +14,7 @@ import type {
   OrgKind,
   OrgMember,
 } from "../../core/identity.types";
-import type { IssuerKybSubmitBody } from "../../core/issuer-kyb";
+import type { IssuerKybDecisionInput, IssuerKybSubmitBody } from "../../core/issuer-kyb";
 
 let _id = 0;
 const nextId = (prefix: string) => `${prefix}_${Date.now().toString(36)}_${(_id++).toString(36)}`;
@@ -59,6 +59,7 @@ class MemoryOrganizationStore {
       issuerId: input.issuerId ?? null,
       kybStatus: input.kind === "issuer" ? "approved" : null,
       kybApplication: null,
+      kybReview: null,
       createdAt: new Date().toISOString(),
     };
     this.orgs.set(id, org);
@@ -209,6 +210,27 @@ class MemoryOrganizationStore {
         companyWebsite: body.companyWebsite ?? null,
         notes: body.notes ?? null,
         submittedAt,
+      },
+      kybReview: null,
+    };
+    this.orgs.set(orgId, next);
+    return next;
+  }
+
+  /** Issuer orgs only (caller must verify kind + current status). */
+  setIssuerKybDecision(orgId: string, input: IssuerKybDecisionInput): AppOrg {
+    const org = this.orgs.get(orgId);
+    if (!org) {
+      throw new Error(`MemoryOrganizationStore: org not found: ${orgId}`);
+    }
+    const next: AppOrg = {
+      ...org,
+      kybStatus: input.decision,
+      kybReview: {
+        decision: input.decision,
+        decidedByUserId: input.decidedByUserId,
+        decidedAt: new Date().toISOString(),
+        reason: input.reason ?? null,
       },
     };
     this.orgs.set(orgId, next);

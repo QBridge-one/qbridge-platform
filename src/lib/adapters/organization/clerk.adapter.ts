@@ -22,11 +22,15 @@ import type {
   OrgKind,
   OrgMember,
 } from "../../core/identity.types";
-import type { IssuerKybSubmitBody } from "../../core/issuer-kyb";
+import type {
+  IssuerKybDecisionInput,
+  IssuerKybSubmitBody,
+} from "../../core/issuer-kyb";
 import {
   forbidden,
   inviteAlreadyExists,
   inviteNotFound,
+  issuerKybConflict,
   membershipNotFound,
   orgNotFound,
 } from "../../core/errors";
@@ -107,6 +111,7 @@ function mapOrg(o: ClerkOrg): AppOrg {
     issuerId: pickIssuerId(o.publicMetadata),
     kybStatus: kyb.kybStatus,
     kybApplication: kyb.kybApplication,
+    kybReview: kyb.kybReview,
     createdAt: new Date(o.createdAt).toISOString(),
   };
 }
@@ -178,6 +183,21 @@ class ClerkOrganizationAdapter implements OrganizationPort {
     const cc = await clerkClient();
     const list = await cc.users.getOrganizationMembershipList({ userId });
     return list.data.map((m) => mapOrg(m.organization));
+  }
+
+  async listOrgs(filter?: { kind?: OrgKind; limit?: number }): Promise<AppOrg[]> {
+    const cc = await clerkClient();
+    // Clerk caps `limit` at 500 per call. For v1 issuer counts we
+    // stay under that; when we cross it we'll page here.
+    const hardLimit = Math.min(filter?.limit ?? 500, 500);
+    const list = await cc.organizations.getOrganizationList({
+      limit: hardLimit,
+      orderBy: "-created_at",
+    });
+    let mapped = list.data.map(mapOrg);
+    if (filter?.kind) mapped = mapped.filter((o) => o.kind === filter.kind);
+    if (filter?.limit != null) mapped = mapped.slice(0, filter.limit);
+    return mapped;
   }
 
   async listMembers(orgId: string): Promise<OrgMember[]> {
@@ -294,6 +314,47 @@ class ClerkOrganizationAdapter implements OrganizationPort {
         kind: "issuer",
         kybStatus: "submitted",
         kybApplication: snapshot,
+        // Resubmission clears any prior decision; ops re-reviews from scratch.
+        kybReview: null,
+      },
+    });
+    const fresh = await cc.organizations.getOrganization({ organizationId: orgId });
+    return mapOrg(fresh);
+  }
+
+  async setIssuerKybDecision(
+    orgId: string,
+    input: IssuerKybDecisionInput,
+  ): Promise<AppOrg> {
+    const cc = await clerkClient();
+    const o = await cc.organizations
+      .getOrganization({ organizationId: orgId })
+      .catch(() => null);
+    if (!o) throw orgNotFound(orgId);
+    const kind = mapKindFromMetadata(o.publicMetadata);
+    if (kind !== "issuer") {
+      throw forbidden("Only issuer workspaces have KYB decisions.");
+    }
+    const kybNow = kybFieldsFromOrganizationPublicMeta(kind, o.publicMetadata);
+    if (kybNow.kybStatus !== "submitted") {
+      throw issuerKybConflict();
+    }
+    const existing =
+      o.publicMetadata != null && typeof o.publicMetadata === "object"
+        ? { ...(o.publicMetadata as Record<string, unknown>) }
+        : {};
+    const review = {
+      decision: input.decision,
+      decidedByUserId: input.decidedByUserId,
+      decidedAt: new Date().toISOString(),
+      reason: input.reason ?? null,
+    };
+    await cc.organizations.updateOrganization(orgId, {
+      publicMetadata: {
+        ...existing,
+        kind: "issuer",
+        kybStatus: input.decision,
+        kybReview: review,
       },
     });
     const fresh = await cc.organizations.getOrganization({ organizationId: orgId });

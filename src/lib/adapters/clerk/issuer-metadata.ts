@@ -1,7 +1,9 @@
 import {
   type IssuerKybApplication,
+  type IssuerKybReview,
   type IssuerKybStatus,
   issuerKybApplicationFromMetadata,
+  issuerKybReviewFromMetadata,
   parseIssuerKybStatusField,
 } from "../../core/issuer-kyb";
 
@@ -12,9 +14,10 @@ export function kybFieldsFromOrganizationPublicMeta(
 ): {
   kybStatus: IssuerKybStatus | null;
   kybApplication: IssuerKybApplication | null;
+  kybReview: IssuerKybReview | null;
 } {
   if (kind === "ops") {
-    return { kybStatus: null, kybApplication: null };
+    return { kybStatus: null, kybApplication: null, kybReview: null };
   }
   const kybStatus = parseIssuerKybStatusField(
     publicMetadata &&
@@ -25,5 +28,6 @@ export function kybFieldsFromOrganizationPublicMeta(
       : undefined,
   );
   const kybApplication = issuerKybApplicationFromMetadata(publicMetadata);
-  return { kybStatus, kybApplication };
+  const kybReview = issuerKybReviewFromMetadata(publicMetadata);
+  return { kybStatus, kybApplication, kybReview };
 }

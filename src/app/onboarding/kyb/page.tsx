@@ -19,7 +19,7 @@ export default async function IssuerKybPage() {
     redirect("/workspace");
   }
 
-  const { kybStatus, kybApplication, name: orgName } = session.activeOrg;
+  const { kybStatus, kybApplication, kybReview, name: orgName } = session.activeOrg;
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col justify-center gap-8 px-6 py-16">
@@ -60,15 +60,26 @@ export default async function IssuerKybPage() {
             </div>
           </dl>
           <p className="text-muted-foreground text-xs">
-            Need to fix something? Ask your QBridge onboarding contact to reopen the application or set
-            status back to rejected in Clerk with a note — you can resubmit from this page after that.
+            QBridge Compliance will be in touch if anything is missing. You'll receive an in-app
+            notification and an email as soon as the application is reviewed.
           </p>
           <Button variant="outline" className="w-full" asChild>
             <Link href="/select-workspace">Switch workspace</Link>
           </Button>
         </section>
       ) : (
-        <KybForm orgName={orgName} initialStatus={kybStatus} />
+        <>
+          {kybStatus === "rejected" && kybReview?.reason ? (
+            <section className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm">
+              <p className="font-medium text-destructive">Why this was rejected</p>
+              <p className="mt-1 text-destructive/90">{kybReview.reason}</p>
+              <p className="mt-2 text-xs text-destructive/70">
+                Reviewed {new Date(kybReview.decidedAt).toLocaleString()}
+              </p>
+            </section>
+          ) : null}
+          <KybForm orgName={orgName} initialStatus={kybStatus} />
+        </>
       )}
     </main>
   );

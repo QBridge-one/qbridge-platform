@@ -12,8 +12,20 @@ import "server-only";
 
 import type { AppRole, AuthEvent } from "../core/identity.types";
 import { isAppRole } from "../core/identity.types";
-import { auditLogAdapter } from "../container.server";
+import {
+  auditLogAdapter,
+  emailAdapter,
+  notificationAdapter,
+  OPS_ORG_ID,
+  organizationAdapter,
+} from "../container.server";
 import { memoryOrganizationStore } from "../adapters/organization/memory.store";
+import {
+  issuerKybApplicationFromMetadata,
+  issuerKybReviewFromMetadata,
+  parseIssuerKybStatusField,
+} from "../core/issuer-kyb";
+import { dispatchNotification } from "./notification.service";
 
 const seenEventIds = new Set<string>();
 const MAX_DEDUPE = 1000;
@@ -145,6 +157,9 @@ export async function applyAuthEvent(evt: AuthEvent): Promise<void> {
           creatorUserId: "system",
         });
       }
+      if (evt.type === "org.updated") {
+        await maybeNotifyKybTransition(o);
+      }
       break;
     }
     case "invite.accepted":
@@ -162,4 +177,86 @@ export async function applyAuthEvent(evt: AuthEvent): Promise<void> {
     target: evt.eventId,
     payload: { type: evt.type, eventId: evt.eventId },
   });
+}
+
+// ─── KYB backup: detect transitions in org.updated ─────────
+// Called on every `org.updated`. Computes the issuer KYB state from
+// the event payload and fires the matching notification. The
+// dedupeKey is identical to what the UI-driven path uses (orgId +
+// submittedAt / decidedAt), so a re-emit from the UI write that
+// races with the Clerk webhook collapses into one fanout.
+//
+// We do NOT write a kyb.* audit row here at v1 — out-of-band
+// dashboard flips remain unaudited at the kyb.* action level (the
+// generic ops.action row above still records the webhook itself).
+async function maybeNotifyKybTransition(o: OrgPayload): Promise<void> {
+  const meta = o.public_metadata as Record<string, unknown> | undefined;
+  if (!meta) return;
+  if (meta.kind !== "issuer") return;
+
+  const kybStatus = parseIssuerKybStatusField(meta.kybStatus);
+  const orgName = o.name ?? o.slug ?? o.id;
+  const deps = {
+    notification: notificationAdapter,
+    organization: organizationAdapter,
+    email: emailAdapter,
+  };
+
+  if (kybStatus === "submitted") {
+    const app = issuerKybApplicationFromMetadata(meta);
+    if (!app || !OPS_ORG_ID) return;
+    await dispatchNotification(deps, {
+      kind: "issuer.kyb_submitted",
+      orgId: o.id,
+      payload: {
+        issuerOrgId: o.id,
+        issuerOrgName: orgName,
+        legalEntityName: app.legalEntityName,
+        jurisdiction: app.jurisdiction,
+        submittedByUserId: "system",
+        submittedAt: app.submittedAt,
+      },
+      recipients: [
+        {
+          orgId: OPS_ORG_ID,
+          plane: "ops",
+          roles: ["ops_admin", "ops_onboarding"],
+        },
+      ],
+      dedupeKey: `${o.id}:${app.submittedAt}`,
+    });
+    return;
+  }
+
+  if (kybStatus === "approved" || kybStatus === "rejected") {
+    const review = issuerKybReviewFromMetadata(meta);
+    if (!review) return;
+    await dispatchNotification(deps, {
+      kind: kybStatus === "approved" ? "issuer.kyb_approved" : "issuer.kyb_rejected",
+      orgId: o.id,
+      payload:
+        kybStatus === "approved"
+          ? {
+              issuerOrgId: o.id,
+              issuerOrgName: orgName,
+              decidedByUserId: review.decidedByUserId,
+              decidedAt: review.decidedAt,
+            }
+          : {
+              issuerOrgId: o.id,
+              issuerOrgName: orgName,
+              decidedByUserId: review.decidedByUserId,
+              decidedAt: review.decidedAt,
+              reason: review.reason,
+            },
+      recipients: [
+        {
+          orgId: o.id,
+          plane: "issuer",
+          roles: ["issuer_admin"],
+        },
+      ],
+      dedupeKey: `${o.id}:${kybStatus}:${review.decidedAt}`,
+    });
+  }
 }

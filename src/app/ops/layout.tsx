@@ -6,8 +6,8 @@
 import { OpsSidebar } from "@/components/dashboard/ops-sidebar";
 import { WalletStatus } from "@/components/wallet/wallet-status";
 import { IdentityControls } from "@/components/dashboard/identity-controls";
-import { Bell, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -61,10 +61,7 @@ export default async function OpsLayout({
 
             <Separator orientation="vertical" className="h-6" />
 
-            <Button variant="ghost" size="icon" className="relative h-9 w-9">
-              <Bell className="h-4 w-4" />
-              <span className="sr-only">Notifications</span>
-            </Button>
+            <NotificationBell />
 
             <WalletStatus linkedAddress={session.user.primaryWallet} />
             <IdentityControls />

@@ -13,11 +13,12 @@ import type {
   OrgKind,
   OrgMember,
 } from "../../core/identity.types";
-import type { IssuerKybSubmitBody } from "../../core/issuer-kyb";
+import type { IssuerKybDecisionInput, IssuerKybSubmitBody } from "../../core/issuer-kyb";
 import {
   forbidden,
   inviteAlreadyExists,
   inviteNotFound,
+  issuerKybConflict,
   membershipNotFound,
   orgNotFound,
 } from "../../core/errors";
@@ -30,6 +31,13 @@ class MemoryOrganizationAdapter implements OrganizationPort {
 
   async listForUser(userId: string): Promise<AppOrg[]> {
     return memoryOrganizationStore.listForUser(userId);
+  }
+
+  async listOrgs(filter?: { kind?: OrgKind; limit?: number }): Promise<AppOrg[]> {
+    let out = memoryOrganizationStore.listOrgs();
+    if (filter?.kind) out = out.filter((o) => o.kind === filter.kind);
+    if (filter?.limit != null) out = out.slice(0, filter.limit);
+    return out;
   }
 
   async listMembers(orgId: string): Promise<OrgMember[]> {
@@ -80,6 +88,21 @@ class MemoryOrganizationAdapter implements OrganizationPort {
     if (!org) throw orgNotFound(orgId);
     if (org.kind !== "issuer") throw forbidden("Only issuer workspaces go through KYB onboarding.");
     return memoryOrganizationStore.submitIssuerKyb(orgId, body);
+  }
+
+  async setIssuerKybDecision(
+    orgId: string,
+    input: IssuerKybDecisionInput,
+  ): Promise<AppOrg> {
+    const org = memoryOrganizationStore.getOrg(orgId);
+    if (!org) throw orgNotFound(orgId);
+    if (org.kind !== "issuer") {
+      throw forbidden("Only issuer workspaces have KYB decisions.");
+    }
+    if (org.kybStatus !== "submitted") {
+      throw issuerKybConflict();
+    }
+    return memoryOrganizationStore.setIssuerKybDecision(orgId, input);
   }
 
   async updateMemberRole(

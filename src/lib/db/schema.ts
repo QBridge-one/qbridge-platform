@@ -17,6 +17,7 @@
 //     other tables FK to it so cascade cleanup works.
 // ============================================================
 
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   uuid,
@@ -140,6 +141,128 @@ export const indexerCursors = pgTable("indexer_cursors", {
     .defaultNow(),
 });
 
+// ─── Audit entries (off-chain action log) ──────────────────────
+// Promoted from the in-memory MemoryAuditLogAdapter. Captures every
+// off-chain action (invites, role changes, KYB lifecycle, ops actions).
+// On-chain events still live in role_assignment_events above; a
+// reporting layer may stitch them by ts.
+//
+// Identifier columns (org_id, actor_user_id) are plain text — they
+// reference Clerk ids, not local FKs, so there is no relational
+// constraint here (matches the pattern in access_managers).
+
+export const auditEntries = pgTable(
+  "audit_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for system-wide events (e.g. webhook ingest of an event
+     *  not yet bound to a specific org). */
+    orgId: text("org_id"),
+    actorUserId: text("actor_user_id").notNull(),
+    /** Action token from AuditAction in core/identity.types. */
+    action: text("action").notNull(),
+    /** Free-form target identifier (org slug, member user id, invite id, …). */
+    target: text("target"),
+    payload: jsonb("payload").notNull().default(sql`'{}'::jsonb`),
+    ts: timestamp("ts", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("audit_org_ts_idx").on(t.orgId, t.ts.desc()),
+    index("audit_actor_ts_idx").on(t.actorUserId, t.ts.desc()),
+    index("audit_action_ts_idx").on(t.action, t.ts.desc()),
+  ],
+);
+
+// ─── In-app notifications (per-recipient fanout) ───────────────
+// One row per recipient. The notification service resolves a
+// RecipientRule (org + plane + roles) into N rows in a single
+// transaction with the originating state change.
+//
+// Dedupe: when a caller provides `dedupe_key`, a partial-unique
+// index prevents (kind, org_id, user_id, dedupe_key) duplicates —
+// used to coalesce the UI-trigger + Clerk-webhook backup paths.
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** NotificationKind from core/notification.ts. */
+    kind: text("kind").notNull(),
+    /** Org this notification is ABOUT (issuer org for kyb.*). */
+    orgId: text("org_id").notNull(),
+    /** Recipient user id. */
+    userId: text("user_id").notNull(),
+    title: text("title").notNull(),
+    body: text("body"),
+    actionUrl: text("action_url"),
+    payload: jsonb("payload").notNull().default(sql`'{}'::jsonb`),
+    /** Caller-supplied collision key. NULL = no dedupe. */
+    dedupeKey: text("dedupe_key"),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    // Bell dropdown: unread first, then chronological.
+    index("notif_user_read_created_idx").on(
+      t.userId,
+      t.readAt,
+      t.createdAt.desc(),
+    ),
+    // Ops queue filters by org+kind.
+    index("notif_org_kind_created_idx").on(t.orgId, t.kind, t.createdAt.desc()),
+    // Partial unique for caller-driven dedupe.
+    uniqueIndex("notif_dedupe_uq")
+      .on(t.kind, t.orgId, t.userId, t.dedupeKey)
+      .where(sql`dedupe_key IS NOT NULL`),
+  ],
+);
+
+// ─── Email outbox (transactional dispatch queue) ───────────────
+// Written in the same tx as the notification row. A dispatcher
+// leases rows by setting `locked_until`, sends via EmailPort, then
+// marks `sent_at`. Failures bump `attempts` + record `last_error`.
+//
+// `channel` is "email" today; the column is here so the table can
+// generalize (slack, webhook, push) without a schema change.
+
+export const notificationOutbox = pgTable(
+  "notification_outbox",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    channel: text("channel").notNull().default("email"),
+    /** Mirrors the notification kind so workers can filter/route. */
+    kind: text("kind").notNull(),
+    toAddress: text("to_address").notNull(),
+    /** Recipient user id, when known. NULL for system-targeted sends. */
+    toUserId: text("to_user_id"),
+    orgId: text("org_id"),
+    subject: text("subject").notNull(),
+    html: text("html").notNull(),
+    textBody: text("text_body"),
+    payload: jsonb("payload").notNull().default(sql`'{}'::jsonb`),
+    dedupeKey: text("dedupe_key"),
+    attempts: integer("attempts").notNull().default(0),
+    /** When a dispatcher holds a lease; expires for retry. */
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+    lastError: text("last_error"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    // Worker poll: unsent rows in arrival order.
+    index("outbox_pending_idx")
+      .on(t.lockedUntil, t.createdAt)
+      .where(sql`sent_at IS NULL`),
+    uniqueIndex("outbox_dedupe_uq")
+      .on(t.channel, t.kind, t.toAddress, t.dedupeKey)
+      .where(sql`dedupe_key IS NOT NULL`),
+  ],
+);
+
 // ─── Inferred row types (use in app/indexer code) ──────────────
 export type AccessManagerRow = typeof accessManagers.$inferSelect;
 export type NewAccessManager = typeof accessManagers.$inferInsert;
@@ -147,3 +270,9 @@ export type RoleAssignmentRow = typeof roleAssignments.$inferSelect;
 export type NewRoleAssignment = typeof roleAssignments.$inferInsert;
 export type RoleAssignmentEventRow = typeof roleAssignmentEvents.$inferSelect;
 export type NewRoleAssignmentEvent = typeof roleAssignmentEvents.$inferInsert;
+export type AuditEntryRow = typeof auditEntries.$inferSelect;
+export type NewAuditEntry = typeof auditEntries.$inferInsert;
+export type NotificationRow = typeof notifications.$inferSelect;
+export type NewNotificationRow = typeof notifications.$inferInsert;
+export type NotificationOutboxRow = typeof notificationOutbox.$inferSelect;
+export type NewNotificationOutbox = typeof notificationOutbox.$inferInsert;

@@ -44,6 +44,11 @@ import { clerkAuthWebhookAdapter } from "./adapters/auth-webhook/clerk.adapter";
 import { memoryWalletLinkAdapter } from "./adapters/wallet-link/memory.adapter";
 import { clerkWalletLinkAdapter } from "./adapters/wallet-link/clerk.adapter";
 import { memoryAuditLogAdapter } from "./adapters/audit-log/memory.adapter";
+import { drizzleAuditLogAdapter } from "./adapters/audit-log/drizzle.adapter";
+import { memoryNotificationAdapter } from "./adapters/notification/memory.adapter";
+import { drizzleNotificationAdapter } from "./adapters/notification/drizzle.adapter";
+import { consoleEmailAdapter } from "./adapters/email/console.adapter";
+import { resendEmailAdapter } from "./adapters/email/resend.adapter";
 
 // ─── Identity provider switch ────────────────────────────────
 // Default is "none" so a fresh clone with no .env doesn't auto-log
@@ -93,10 +98,40 @@ export const WALLET_PROVIDER = (process.env.WALLET_PROVIDER ?? "web3auth").toLow
   | "alchemy"
   | "turnkey";
 
-export const auditLogAdapter = memoryAuditLogAdapter;
+// ─── DB-backed persistence switches ──────────────────────────
+// Audit + notifications use Postgres when DATABASE_URL is set
+// (Drizzle adapters lazy-init the pool on first call). On a fresh
+// clone with no DB the memory adapters keep dev usable.
+const DB_BACKED = Boolean(process.env.DATABASE_URL?.trim());
+
+export const auditLogAdapter = DB_BACKED ? drizzleAuditLogAdapter : memoryAuditLogAdapter;
+export const notificationAdapter = DB_BACKED
+  ? drizzleNotificationAdapter
+  : memoryNotificationAdapter;
+
+// ─── Email provider switch ───────────────────────────────────
+// EMAIL_PROVIDER  = "console" | "resend"   (default: "console")
+//   console : log to stdout — dev / preview / when RESEND_API_KEY missing.
+//   resend  : POST to api.resend.com (requires RESEND_API_KEY + EMAIL_FROM).
+//
+// The contact form route (/api/contact) uses Zoho SMTP via nodemailer
+// directly and is NOT wired through this port — keep the platform's
+// transactional sender reputation isolated from the human mailbox.
+const EMAIL_PROVIDER = (process.env.EMAIL_PROVIDER ?? "console").toLowerCase();
+export const emailAdapter =
+  EMAIL_PROVIDER === "resend" && process.env.RESEND_API_KEY?.trim()
+    ? resendEmailAdapter
+    : consoleEmailAdapter;
+
+/** Ops workspace id — recipient of platform-wide notifications like
+ *  `issuer.kyb_submitted`. Read at request time so a missed env var
+ *  degrades gracefully (notifications skip; state changes still apply). */
+export const OPS_ORG_ID = process.env.OPS_ORG_ID?.trim() || null;
 
 export type { IdentityPort } from "./ports/identity.port";
 export type { OrganizationPort } from "./ports/organization.port";
 export type { AuthWebhookPort } from "./ports/auth-webhook.port";
 export type { WalletLinkPort } from "./ports/wallet-link.port";
 export type { AuditLogPort } from "./ports/audit-log.port";
+export type { NotificationPort } from "./ports/notification.port";
+export type { EmailPort } from "./ports/email.port";

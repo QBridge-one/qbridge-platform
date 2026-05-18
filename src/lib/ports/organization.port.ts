@@ -13,7 +13,7 @@ import type {
   OrgKind,
   OrgMember,
 } from "../core/identity.types";
-import type { IssuerKybSubmitBody } from "../core/issuer-kyb";
+import type { IssuerKybDecisionInput, IssuerKybSubmitBody } from "../core/issuer-kyb";
 
 export interface OrganizationPort {
   // ── Read ─────────────────────────────────────────────────
@@ -21,6 +21,11 @@ export interface OrganizationPort {
   listForUser(userId: string): Promise<AppOrg[]>;
   listMembers(orgId: string): Promise<OrgMember[]>;
   listInvites(orgId: string): Promise<Invite[]>;
+  /** Cross-tenant listing — used by ops for the issuer review queue.
+   *  The Clerk adapter pages through `getOrganizationList` and filters
+   *  client-side; callers should treat this as moderately expensive
+   *  and avoid request-time use without a small `limit`. */
+  listOrgs(filter?: { kind?: OrgKind; limit?: number }): Promise<AppOrg[]>;
 
   // ── Lifecycle ────────────────────────────────────────────
   createOrg(input: {
@@ -41,6 +46,12 @@ export interface OrganizationPort {
 
   /** Issuer onboarding: persists snapshot + sets kybStatus to `submitted`. */
   submitIssuerKyb(orgId: string, body: IssuerKybSubmitBody): Promise<AppOrg>;
+
+  /** Ops decision: flips kybStatus to `approved` or `rejected`, records
+   *  reviewer + (optional) reason on the org. Throws `issuerKybConflict()`
+   *  when the org is not currently `submitted`. Throws `forbidden()` for
+   *  ops/non-issuer orgs. */
+  setIssuerKybDecision(orgId: string, input: IssuerKybDecisionInput): Promise<AppOrg>;
 
   // ── Membership ───────────────────────────────────────────
   /** @deprecated Use setMemberRoles. Sets the primary role to a single

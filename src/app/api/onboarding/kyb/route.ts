@@ -4,7 +4,13 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { auditLogAdapter, organizationAdapter } from "@/lib/container.server";
+import {
+  auditLogAdapter,
+  emailAdapter,
+  notificationAdapter,
+  OPS_ORG_ID,
+  organizationAdapter,
+} from "@/lib/container.server";
 import { errorResponse } from "@/lib/auth/api";
 import { requireOrg } from "@/lib/auth/server";
 import { submitIssuerKybApplication } from "@/lib/services/onboarding.service";
@@ -42,7 +48,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid body", details: parsed.error.flatten() }, { status: 400 });
     }
     await submitIssuerKybApplication(
-      { organization: organizationAdapter, audit: auditLogAdapter },
+      {
+        organization: organizationAdapter,
+        audit: auditLogAdapter,
+        notification: notificationAdapter,
+        email: emailAdapter,
+      },
       {
         session,
         body: {
@@ -51,6 +62,7 @@ export async function POST(req: Request) {
           companyWebsite: parsed.data.companyWebsite ?? null,
           notes: parsed.data.notes ?? null,
         },
+        opsOrgId: OPS_ORG_ID,
       },
     );
     return NextResponse.json({ ok: true });
