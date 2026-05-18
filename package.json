@@ -14,8 +14,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/scripts/db-migrate.ts",
     "db:studio": "drizzle-kit studio",
-    "indexer": "tsx src/scripts/indexer.ts",
-    "indexer:once": "INDEXER_ONESHOT=1 tsx src/scripts/indexer.ts"
+    "indexer": "NODE_OPTIONS='--conditions=react-server' tsx src/scripts/indexer.ts",
+    "indexer:once": "INDEXER_ONESHOT=1 NODE_OPTIONS='--conditions=react-server' tsx src/scripts/indexer.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.3.2",

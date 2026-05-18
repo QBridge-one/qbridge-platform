@@ -200,6 +200,55 @@ export interface DrainResult {
   failed: number;
 }
 
+export interface DrainLoopOptions extends DrainOptions {
+  /** Milliseconds between drain passes. Default 120_000 (2 min). */
+  intervalMs?: number;
+  /** Optional log sink — defaults to no-op so unit tests stay quiet.
+   *  Indexer wires this to console.log with a `[email-outbox]` tag. */
+  logger?: (msg: string) => void;
+}
+
+/** Long-running drain loop. Calls drainEmailOutbox every `intervalMs`,
+ *  serializing passes so a slow drain can't overlap itself. Returns a
+ *  stop() function that halts the loop without waiting for the in-flight
+ *  pass — workers should call it from their SIGINT/SIGTERM handler. */
+export function startEmailOutboxDrainLoop(
+  deps: Pick<NotificationServiceDeps, "notification" | "email">,
+  opts?: DrainLoopOptions,
+): () => void {
+  const intervalMs = opts?.intervalMs ?? 120_000;
+  const log = opts?.logger ?? (() => {});
+  let stopped = false;
+  let running = false;
+
+  const tick = async () => {
+    if (stopped || running) return;
+    running = true;
+    try {
+      const result = await drainEmailOutbox(deps, opts);
+      if (result.attempted > 0) {
+        log(
+          `drained ${result.sent}/${result.attempted} (failed ${result.failed})`,
+        );
+      }
+    } catch (err) {
+      log(`drain error: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      running = false;
+    }
+  };
+
+  // Run once immediately so a freshly-started worker clears any backlog
+  // accumulated while it was down, then settle into the interval cadence.
+  void tick();
+  const handle = setInterval(tick, intervalMs);
+
+  return () => {
+    stopped = true;
+    clearInterval(handle);
+  };
+}
+
 /** One pass over the email outbox. Returns once the batch is drained.
  *  Call this from a cron / Vercel cron / Railway worker — see docs. */
 export async function drainEmailOutbox(

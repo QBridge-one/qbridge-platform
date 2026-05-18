@@ -32,6 +32,11 @@ import { INDEXER_CHAINS } from "@/lib/indexer/chains";
 import { bootstrapAccessManagers } from "@/lib/indexer/bootstrap";
 import { backfillAll } from "@/lib/indexer/backfill";
 import { watchAll } from "@/lib/indexer/watch";
+import { drizzleNotificationAdapter } from "@/lib/adapters/notification/drizzle.adapter";
+import { resendEmailAdapter } from "@/lib/adapters/email/resend.adapter";
+import { consoleEmailAdapter } from "@/lib/adapters/email/console.adapter";
+import { startEmailOutboxDrainLoop } from "@/lib/services/notification.service";
+import type { EmailPort } from "@/lib/ports/email.port";
 
 /**
  * Railway / Render / Fly set `$PORT` and probe HTTP `/` almost immediately after
@@ -86,14 +91,39 @@ async function main() {
   const stop = await watchAll(INDEXER_CHAINS);
   console.log("[indexer] watching — press Ctrl+C to stop");
 
+  // Same long-lived process also drains the platform email outbox so
+  // notifications go out without needing a separate Vercel cron / hosted
+  // scheduler. Picks the EmailPort the same way container.server.ts
+  // does, but inlined so the indexer doesn't drag in Clerk-only deps.
+  const stopEmailDrain = startEmailOutboxDrainLoop(
+    { notification: drizzleNotificationAdapter, email: pickEmailAdapter() },
+    {
+      intervalMs: 120_000,
+      logger: (msg) => console.log(`[email-outbox] ${msg}`),
+    },
+  );
+  console.log("[email-outbox] drain loop started (2 min interval)");
+
   const shutdown = (sig: string) => {
     console.log(`[indexer] ${sig} — shutting down`);
     stop();
+    stopEmailDrain();
     stopHealthProbe();
     process.exit(0);
   };
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
+}
+
+/** Mirror container.server.ts's EMAIL_PROVIDER switch. The console
+ *  adapter is the safe default — it logs sends instead of issuing real
+ *  requests, so missing creds don't block other indexer work. */
+function pickEmailAdapter(): EmailPort {
+  const provider = (process.env.EMAIL_PROVIDER ?? "console").toLowerCase();
+  if (provider === "resend" && process.env.RESEND_API_KEY?.trim()) {
+    return resendEmailAdapter;
+  }
+  return consoleEmailAdapter;
 }
 
 main().catch((err) => {
