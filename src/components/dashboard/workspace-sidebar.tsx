@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
   BarChart3,
+  ListChecks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +62,13 @@ const NAV_ITEMS: NavItem[] = [
     label: "Overview",
     href: BASE,
     icon: LayoutDashboard,
+    section: "main",
+    requires: "workspace:view",
+  },
+  {
+    label: "Onboarding",
+    href: `${BASE}/onboarding`,
+    icon: ListChecks,
     section: "main",
     requires: "workspace:view",
   },
