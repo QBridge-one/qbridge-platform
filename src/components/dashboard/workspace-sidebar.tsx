@@ -34,6 +34,7 @@ import {
 import { useState } from "react";
 import { can, type Permission } from "@/lib/auth/permissions";
 import { APP_ROLE_LABELS, type AppRole } from "@/lib/core/identity.types";
+import { isNavItemActive } from "@/lib/nav/is-nav-item-active";
 
 function workspaceRoleBadge(
   roles: AppRole[] | null,
@@ -187,8 +188,10 @@ export function WorkspaceSidebar({
     ? `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`
     : null;
 
+  const navHrefs = visibleItems.map((i) => i.href);
+
   const isActive = (href: string) =>
-    href === BASE ? pathname === BASE : pathname.startsWith(href);
+    isNavItemActive(href, pathname, BASE, navHrefs);
 
   return (
     <TooltipProvider delayDuration={0}>
