@@ -6,6 +6,7 @@
 import { OpsSidebar } from "@/components/dashboard/ops-sidebar";
 import { WalletStatus } from "@/components/wallet/wallet-status";
 import { IdentityControls } from "@/components/dashboard/identity-controls";
+import { ModeToggle } from "@/components/dashboard/mode-toggle";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -62,6 +63,8 @@ export default async function OpsLayout({
             <Separator orientation="vertical" className="h-6" />
 
             <NotificationBell />
+
+            <ModeToggle />
 
             <WalletStatus linkedAddress={session.user.primaryWallet} />
             <IdentityControls />

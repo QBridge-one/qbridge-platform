@@ -3,7 +3,9 @@ import "./globals.css";
 import { Web3AuthProviders } from "@/components/providers/web3auth-providers";
 import { IdentityProvider } from "@/components/providers/identity-provider";
 import { AppToaster } from "@/components/providers/app-toaster";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { themeFontClassName } from "@/lib/theme/fonts";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.qbridge.one";
 
@@ -49,11 +51,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning className={themeFontClassName}>
       <head>
         {process.env.NEXT_PUBLIC_FB_APP_ID && (
           <meta property="fb:app_id" content={process.env.NEXT_PUBLIC_FB_APP_ID} />
         )}
+        {/* Landing page fonts — marketing site only; see src/components/landing/ */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -62,14 +65,16 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <IdentityProvider>
-          <Web3AuthProviders>
-            <TooltipProvider>
-              {children}
-              <AppToaster />
-            </TooltipProvider>
-          </Web3AuthProviders>
-        </IdentityProvider>
+        <ThemeProvider>
+          <IdentityProvider>
+            <Web3AuthProviders>
+              <TooltipProvider>
+                {children}
+                <AppToaster />
+              </TooltipProvider>
+            </Web3AuthProviders>
+          </IdentityProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

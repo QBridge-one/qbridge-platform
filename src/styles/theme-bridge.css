@@ -1,0 +1,10 @@
+/**
+ * Maps next/font CSS variables to Tailwind font tokens.
+ * Imported after shadcn theme updates so font wiring survives
+ * `yarn shadcn add @tweakcn/<theme>` palette swaps.
+ */
+@theme inline {
+  --font-sans: var(--font-theme-sans), sans-serif;
+  --font-mono: var(--font-theme-mono), monospace;
+  --font-serif: var(--font-theme-serif), serif;
+}
