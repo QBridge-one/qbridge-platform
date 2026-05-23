@@ -10,12 +10,15 @@ import { siteUrl } from "@/lib/marketing/site-url";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  alternates: {
+    canonical: siteUrl,
+  },
   title: "QBridge — Compliant Digital Asset Infrastructure",
   description:
     "Institutional-grade blockchain rails for real-world asset tokenization with compliance, identity controls, and auditability built into the protocol layer.",
   icons: {
-    icon: [{ url: "/icon.png", type: "image/png", sizes: "512x512" }],
-    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
+    icon: [{ url: "/icon.png", type: "image/png", sizes: "103x103" }],
+    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "103x103" }],
     shortcut: [{ url: "/favicon.ico", type: "image/x-icon" }],
   },
   openGraph: {
