@@ -4,17 +4,19 @@
 // components/ops/IssuerReviewQueue.tsx
 // Ops table for the issuer-application queue.
 //
-// Server prefetches the initial tab's rows; this client owns:
-//   - tab state (submitted / approved / rejected / all)
-//   - search (matches company name, legal entity, jurisdiction)
-//   - sort (click any column header to toggle asc/desc)
-//   - the review drawer (Sheet) with Approve/Reject + audit history
+// URL drives tab + drawer state:
+//   ?status=submitted|approved|rejected|all   (default "all")
+//   ?focus=<orgId>                            (opens drawer)
 //
-// Pattern matches workspace/settings/team: rebuild from server data
-// on every tab change; UI mutations refresh the current tab.
+// Server prefetches the visible list and (optionally) the focused
+// org. This client reads the URL via useSearchParams so a soft
+// navigation (bell click → ?focus=...) keeps state consistent
+// without re-running useState initializers. Search and sort stay
+// client-side because they're ephemeral UI state.
 // ============================================================
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
 import {
   Sheet,
@@ -45,10 +47,10 @@ type SortKey = "name" | "legalEntity" | "jurisdiction" | "submittedAt" | "status
 type SortDir = "asc" | "desc";
 
 const TAB_LABEL: Record<TabKey, string> = {
+  all: "All",
   submitted: "Under review",
   approved: "Approved",
   rejected: "Action required",
-  all: "All",
 };
 
 const STATUS_BADGE: Partial<
@@ -79,7 +81,9 @@ const STATUS_BADGE: Partial<
 interface Props {
   initialOrgs: AppOrg[];
   initialTab: TabKey;
-  focusOrgId?: string | null;
+  /** Server-resolved focused org (lookup by ?focus=). When set, the
+   *  drawer opens for this row regardless of which tab is active. */
+  focusedOrg: AppOrg | null;
 }
 
 interface AuditRow {
@@ -90,70 +94,97 @@ interface AuditRow {
   payload: Record<string, unknown>;
 }
 
-export function IssuerReviewQueue({ initialOrgs, initialTab, focusOrgId }: Props) {
-  const [tab, setTab] = useState<TabKey>(initialTab);
-  const [orgs, setOrgs] = useState<AppOrg[]>(initialOrgs);
-  const [loading, setLoading] = useState(false);
-  const [listError, setListError] = useState<string | null>(null);
+export function IssuerReviewQueue({
+  initialOrgs,
+  initialTab,
+  focusedOrg,
+}: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Tab is read from the URL so soft navigations stay in sync with
+  // the server prefetch. `initialTab` is a fallback for the very
+  // first paint (when useSearchParams is empty during SSR hydration).
+  const tab: TabKey = useMemo(() => {
+    const fromUrl = searchParams.get("status");
+    if (fromUrl && isTabKey(fromUrl)) return fromUrl;
+    return initialTab;
+  }, [searchParams, initialTab]);
+
+  // Search + sort are ephemeral UI state, kept client-side so a tab
+  // click doesn't lose what the reviewer was filtering for.
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("submittedAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [selected, setSelected] = useState<AppOrg | null>(() => {
-    if (!focusOrgId) return null;
-    return initialOrgs.find((o) => o.id === focusOrgId) ?? null;
-  });
 
-  const refresh = useCallback(async (target: TabKey) => {
-    setLoading(true);
-    setListError(null);
-    try {
-      const r = await fetch(
-        `/api/ops/issuers?status=${encodeURIComponent(target)}`,
-        { cache: "no-store" },
-      );
-      const data = (await r.json().catch(() => ({}))) as {
-        orgs?: AppOrg[];
-        error?: string;
-      };
-      if (!r.ok) {
-        setListError(
-          typeof data.error === "string" ? data.error : "Could not load issuers.",
-        );
-        setOrgs([]);
-        return;
-      }
-      setOrgs(data.orgs ?? []);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
+  // Drawer selection is initialized from the server's focused org +
+  // synced whenever that prop changes (e.g. bell click while already
+  // on this page).
+  const [selected, setSelected] = useState<AppOrg | null>(focusedOrg);
   useEffect(() => {
-    if (tab === initialTab) return;
-    void refresh(tab);
-  }, [tab, initialTab, refresh]);
+    setSelected(focusedOrg);
+  }, [focusedOrg]);
+
+  const onTabChange = useCallback(
+    (next: string) => {
+      if (!isTabKey(next)) return;
+      const params = new URLSearchParams(searchParams);
+      // "all" is the default — drop the param to keep URLs clean.
+      if (next === "all") params.delete("status");
+      else params.set("status", next);
+      // Switching tabs should also drop any lingering focus so the
+      // user lands in the list, not back in the drawer.
+      params.delete("focus");
+      const qs = params.toString();
+      router.push(qs ? `/ops/admin/issuers?${qs}` : "/ops/admin/issuers");
+    },
+    [router, searchParams],
+  );
+
+  const onDrawerOpenChange = useCallback(
+    (open: boolean) => {
+      if (open) return;
+      setSelected(null);
+      // Strip ?focus= so a refresh doesn't reopen the drawer.
+      if (searchParams.has("focus")) {
+        const params = new URLSearchParams(searchParams);
+        params.delete("focus");
+        const qs = params.toString();
+        router.replace(qs ? `/ops/admin/issuers?${qs}` : "/ops/admin/issuers");
+      }
+    },
+    [router, searchParams],
+  );
 
   const onDecisionSettled = useCallback(async () => {
     setSelected(null);
-    await refresh(tab);
-  }, [tab, refresh]);
+    if (searchParams.has("focus")) {
+      const params = new URLSearchParams(searchParams);
+      params.delete("focus");
+      const qs = params.toString();
+      router.replace(qs ? `/ops/admin/issuers?${qs}` : "/ops/admin/issuers");
+    }
+    // Re-render the server component so the table reflects the new
+    // status of the org we just acted on (and any teammate's edits).
+    router.refresh();
+  }, [router, searchParams]);
 
   const filteredAndSorted = useMemo(() => {
     const q = search.trim().toLowerCase();
     const filtered = q
-      ? orgs.filter((o) => {
+      ? initialOrgs.filter((o) => {
           const name = (o.name ?? "").toLowerCase();
           const legal = (o.kybApplication?.legalEntityName ?? "").toLowerCase();
           const juris = (o.kybApplication?.jurisdiction ?? "").toLowerCase();
           return name.includes(q) || legal.includes(q) || juris.includes(q);
         })
-      : orgs;
+      : initialOrgs;
     const sorted = filtered.slice().sort((a, b) => {
       const cmp = compareBy(a, b, sortKey);
       return sortDir === "asc" ? cmp : -cmp;
     });
     return sorted;
-  }, [orgs, search, sortKey, sortDir]);
+  }, [initialOrgs, search, sortKey, sortDir]);
 
   const onSort = useCallback(
     (key: SortKey) => {
@@ -161,7 +192,6 @@ export function IssuerReviewQueue({ initialOrgs, initialTab, focusOrgId }: Props
         setSortDir((d) => (d === "asc" ? "desc" : "asc"));
       } else {
         setSortKey(key);
-        // Sensible default direction per column type.
         setSortDir(key === "submittedAt" ? "desc" : "asc");
       }
     },
@@ -171,7 +201,7 @@ export function IssuerReviewQueue({ initialOrgs, initialTab, focusOrgId }: Props
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
+        <Tabs value={tab} onValueChange={onTabChange}>
           <TabsList>
             {(Object.keys(TAB_LABEL) as TabKey[]).map((k) => (
               <TabsTrigger key={k} value={k}>
@@ -190,12 +220,6 @@ export function IssuerReviewQueue({ initialOrgs, initialTab, focusOrgId }: Props
           />
         </div>
       </div>
-
-      {listError ? (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {listError}
-        </div>
-      ) : null}
 
       <div className="rounded-lg border bg-card">
         <Table>
@@ -240,16 +264,7 @@ export function IssuerReviewQueue({ initialOrgs, initialTab, focusOrgId }: Props
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell
-                  colSpan={6}
-                  className="py-12 text-center text-sm text-muted-foreground"
-                >
-                  Loading…
-                </TableCell>
-              </TableRow>
-            ) : filteredAndSorted.length === 0 ? (
+            {filteredAndSorted.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={6}
@@ -275,13 +290,15 @@ export function IssuerReviewQueue({ initialOrgs, initialTab, focusOrgId }: Props
 
       <ReviewSheet
         org={selected}
-        onOpenChange={(open) => {
-          if (!open) setSelected(null);
-        }}
+        onOpenChange={onDrawerOpenChange}
         onSettled={onDecisionSettled}
       />
     </div>
   );
+}
+
+function isTabKey(v: string): v is TabKey {
+  return v === "all" || v === "submitted" || v === "approved" || v === "rejected";
 }
 
 function compareBy(a: AppOrg, b: AppOrg, key: SortKey): number {
@@ -306,7 +323,6 @@ function compareBy(a: AppOrg, b: AppOrg, key: SortKey): number {
       return ta - tb;
     }
     case "status": {
-      // Order by review urgency: submitted > rejected > approved > others.
       const rank: Record<string, number> = {
         submitted: 0,
         rejected: 1,
@@ -379,10 +395,7 @@ function IssuerTableRow({
           </Badge>
         ) : null}
       </TableCell>
-      <TableCell
-        className="text-right"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
         <Button variant="outline" size="sm" onClick={onReview}>
           {ctaLabel}
         </Button>
@@ -430,7 +443,6 @@ function ReviewBody({
   const review = org.kybReview;
   const application = org.kybApplication;
 
-  // Load decision history (audit entries scoped to this org).
   useEffect(() => {
     let cancelled = false;
     const ctl = new AbortController();

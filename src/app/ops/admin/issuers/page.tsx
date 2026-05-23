@@ -1,7 +1,14 @@
 // ============================================================
 // app/ops/admin/issuers/page.tsx
-// Ops review queue. Server-side prefetch of the "submitted" tab so
-// reviewers see work immediately; tabs/actions are client-side.
+// Ops issuer-application queue.
+//
+// URL is the source of truth for tab + focused row:
+//   ?status=submitted|approved|rejected|all   (default "all")
+//   ?focus=<orgId>                            (opens the review drawer)
+//
+// Server reads both, prefetches the visible list, and — if focus is
+// set — fetches the focused org separately so the drawer can open
+// even when its status doesn't match the active tab.
 // ============================================================
 
 import { redirect } from "next/navigation";
@@ -10,13 +17,18 @@ import { can } from "@/lib/auth/permissions";
 import { organizationAdapter } from "@/lib/container.server";
 import { IssuerReviewQueue } from "@/components/ops/IssuerReviewQueue";
 import type { AppOrg } from "@/lib/core/identity.types";
-import type { IssuerKybStatus } from "@/lib/core/issuer-kyb";
 
 type TabKey = "submitted" | "approved" | "rejected" | "all";
 
-function tabForStatus(s: IssuerKybStatus | null): TabKey {
-  if (s === "approved" || s === "rejected" || s === "submitted") return s;
-  return "submitted";
+const ALLOWED_TABS: ReadonlySet<TabKey> = new Set<TabKey>([
+  "submitted",
+  "approved",
+  "rejected",
+  "all",
+]);
+
+function isTabKey(v: unknown): v is TabKey {
+  return typeof v === "string" && (ALLOWED_TABS as ReadonlySet<string>).has(v);
 }
 
 function sortByRecency(orgs: AppOrg[]): AppOrg[] {
@@ -34,7 +46,7 @@ function sortByRecency(orgs: AppOrg[]): AppOrg[] {
 export default async function OpsIssuerReviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ focus?: string | string[] }>;
+  searchParams: Promise<{ status?: string | string[]; focus?: string | string[] }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/sign-in");
@@ -46,26 +58,21 @@ export default async function OpsIssuerReviewPage({
   }
 
   const params = await searchParams;
-  const focusRaw = params.focus;
-  const focusOrgId = Array.isArray(focusRaw) ? focusRaw[0] : focusRaw;
+  const statusRaw = Array.isArray(params.status) ? params.status[0] : params.status;
+  const focusRaw = Array.isArray(params.focus) ? params.focus[0] : params.focus;
+  const tab: TabKey = isTabKey(statusRaw) ? statusRaw : "all";
+  const focusOrgId = focusRaw && focusRaw.length > 0 ? focusRaw : null;
 
   const all = await organizationAdapter.listOrgs({ kind: "issuer", limit: 500 });
-  const focused = focusOrgId
-    ? all.find((o) => o.id === focusOrgId) ?? null
-    : null;
-
-  // If the link points at an org that was already moved out of the
-  // "submitted" tab (e.g. a teammate acted first), land on whichever
-  // tab still contains it so the reviewer sees it without hunting.
-  const initialTab: TabKey = focused
-    ? tabForStatus(focused.kybStatus)
-    : "submitted";
-
   const initialOrgs = sortByRecency(
-    initialTab === "submitted"
-      ? all.filter((o) => o.kybStatus === "submitted")
-      : all.filter((o) => o.kybStatus === initialTab),
+    tab === "all" ? all : all.filter((o) => o.kybStatus === tab),
   );
+  // Focused org is fetched separately so the drawer can open even when
+  // the user is on a tab that doesn't contain it. Falls back to null
+  // (drawer stays closed) when the id doesn't match anything.
+  const focusedOrg = focusOrgId
+    ? (all.find((o) => o.id === focusOrgId) ?? null)
+    : null;
 
   return (
     <div className="space-y-6 p-6">
@@ -78,8 +85,8 @@ export default async function OpsIssuerReviewPage({
       </header>
       <IssuerReviewQueue
         initialOrgs={initialOrgs}
-        initialTab={initialTab}
-        focusOrgId={focused?.id ?? null}
+        initialTab={tab}
+        focusedOrg={focusedOrg}
       />
     </div>
   );
