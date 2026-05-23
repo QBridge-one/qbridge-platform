@@ -16,7 +16,7 @@ export function MarketingShell({ children, banner }: MarketingShellProps) {
       <div style={{ background: T.navy, minHeight: "100vh", color: T.coldW }}>
         {banner}
         <Nav />
-        <div style={{ paddingTop: 68 }}>{children}</div>
+        {children}
         <Footer />
       </div>
     </>

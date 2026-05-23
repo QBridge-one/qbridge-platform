@@ -2,13 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { T } from "./shared";
 import { LandingNavCta } from "./landing-nav-cta";
 import { MARKETING_NAV } from "@/lib/marketing/routes";
 
 export function Nav() {
-  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -24,14 +22,14 @@ export function Nav() {
     return () => { document.body.style.overflow = ""; };
   }, [menuOpen]);
 
-  const linkStyle = (active: boolean) => ({
-    color: active ? T.coldW : T.muted,
+  const linkStyle = {
+    color: T.muted,
     fontSize: 13,
     fontWeight: 500,
     textDecoration: "none" as const,
     letterSpacing: "0.04em",
     transition: "color 0.2s",
-  });
+  };
 
   const closeMenu = () => setMenuOpen(false);
 
@@ -75,20 +73,17 @@ export function Nav() {
           </Link>
 
           <div className="nav-desktop-links">
-            {MARKETING_NAV.map(({ label, href }) => {
-              const active = pathname === href;
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  style={linkStyle(active)}
-                  onMouseEnter={e => { if (!active) e.currentTarget.style.color = T.coldW; }}
-                  onMouseLeave={e => { if (!active) e.currentTarget.style.color = T.muted; }}
-                >
-                  {label}
-                </Link>
-              );
-            })}
+            {MARKETING_NAV.map(({ label, href }) => (
+              <Link
+                key={href}
+                href={href}
+                style={linkStyle}
+                onMouseEnter={e => (e.currentTarget.style.color = T.coldW)}
+                onMouseLeave={e => (e.currentTarget.style.color = T.muted)}
+              >
+                {label}
+              </Link>
+            ))}
             <LandingNavCta />
           </div>
 
@@ -193,7 +188,7 @@ export function Nav() {
               key={href}
               href={href}
               onClick={closeMenu}
-              style={{ ...linkStyle(pathname === href), fontSize: 16, padding: "12px 0", color: pathname === href ? T.coldW : T.muted }}
+              style={{ ...linkStyle, fontSize: 16, padding: "12px 0", color: T.coldW }}
             >
               {label}
             </Link>
