@@ -75,15 +75,19 @@ function WalletStatusInner({ linkedAddress }: { linkedAddress: Address | null })
       <Button
         variant="default"
         size="sm"
+        className="h-8 px-2 sm:px-3"
         onClick={() => connect()}
         disabled={isConnecting}
+        aria-label={isConnecting ? "Connecting wallet" : "Connect wallet"}
       >
         {isConnecting ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
         ) : (
-          <Wallet className="mr-2 h-4 w-4" />
+          <Wallet className="h-4 w-4 sm:mr-2" />
         )}
-        {isConnecting ? "Connecting…" : "Connect wallet"}
+        <span className="hidden sm:inline">
+          {isConnecting ? "Connecting…" : "Connect wallet"}
+        </span>
       </Button>
     );
   }
@@ -123,11 +127,11 @@ function WalletStatusInner({ linkedAddress }: { linkedAddress: Address | null })
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-xs font-mono outline-none ring-offset-background hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="flex h-8 items-center gap-2 rounded-md border border-input bg-background px-2 text-xs font-mono outline-none ring-offset-background hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-9 sm:px-3"
           aria-label="Wallet menu"
         >
           <span
-            className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
               isLinked
                 ? "bg-emerald-500/15 text-emerald-600"
                 : "bg-amber-500/15 text-amber-600"
@@ -135,7 +139,7 @@ function WalletStatusInner({ linkedAddress }: { linkedAddress: Address | null })
           >
             {isLinked ? <Check className="h-3 w-3" /> : initials}
           </span>
-          {shortAddress}
+          <span className="hidden sm:inline">{shortAddress}</span>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
