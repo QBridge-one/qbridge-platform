@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { Nav } from "@/components/landing/nav";
 import { DevSetupBanner } from "@/components/landing/dev-setup-banner";
 import { Hero } from "@/components/landing/hero";
 import { Problem } from "@/components/landing/problem";
@@ -11,7 +10,7 @@ import { TechLayer } from "@/components/landing/tech-layer";
 import { UseCases } from "@/components/landing/use-cases";
 import { WhyQBridge } from "@/components/landing/why-qbridge";
 import { CTA } from "@/components/landing/cta";
-import { Footer } from "@/components/landing/footer";
+import { MarketingShell } from "@/components/landing/marketing-shell";
 import { getSession } from "@/lib/auth/server";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -35,9 +34,7 @@ export default async function QBridgeLanding({
   if (session) redirect("/select-workspace");
 
   return (
-    <>
-      <DevSetupBanner />
-      <Nav />
+    <MarketingShell banner={<DevSetupBanner />}>
       <main>
         <Hero />
         <Problem />
@@ -50,7 +47,6 @@ export default async function QBridgeLanding({
         <WhyQBridge />
         <CTA />
       </main>
-      <Footer />
-    </>
+    </MarketingShell>
   );
 }

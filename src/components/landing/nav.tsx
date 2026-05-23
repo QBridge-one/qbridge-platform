@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { T } from "./shared";
 import { LandingNavCta } from "./landing-nav-cta";
-
-const NAV_LINKS = ["Platform", "Compliance", "Use Cases", "About"];
+import { MARKETING_NAV } from "@/lib/marketing/routes";
 
 export function Nav() {
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -23,14 +24,16 @@ export function Nav() {
     return () => { document.body.style.overflow = ""; };
   }, [menuOpen]);
 
-  const linkStyle = {
-    color: T.muted,
+  const linkStyle = (active: boolean) => ({
+    color: active ? T.coldW : T.muted,
     fontSize: 13,
     fontWeight: 500,
     textDecoration: "none" as const,
     letterSpacing: "0.04em",
     transition: "color 0.2s",
-  };
+  });
+
+  const closeMenu = () => setMenuOpen(false);
 
   return (
     <>
@@ -71,19 +74,24 @@ export function Nav() {
             />
           </Link>
 
-          {/* Desktop: inline links - hidden on mobile via CSS */}
           <div className="nav-desktop-links">
-            {NAV_LINKS.map(l => (
-              <a key={l} href="#" style={linkStyle}
-                onMouseEnter={e => (e.currentTarget.style.color = T.coldW)}
-                onMouseLeave={e => (e.currentTarget.style.color = T.muted)}>
-                {l}
-              </a>
-            ))}
+            {MARKETING_NAV.map(({ label, href }) => {
+              const active = pathname === href;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  style={linkStyle(active)}
+                  onMouseEnter={e => { if (!active) e.currentTarget.style.color = T.coldW; }}
+                  onMouseLeave={e => { if (!active) e.currentTarget.style.color = T.muted; }}
+                >
+                  {label}
+                </Link>
+              );
+            })}
             <LandingNavCta />
           </div>
 
-          {/* Mobile: hamburger - visible only on mobile via CSS */}
           <button
             type="button"
             aria-label="Open menu"
@@ -109,14 +117,13 @@ export function Nav() {
         </div>
       </nav>
 
-      {/* Mobile menu overlay + drawer - always in DOM so it works as soon as hamburger is tapped */}
       <>
         <div
           role="button"
           tabIndex={0}
           aria-label="Close menu"
-          onClick={() => setMenuOpen(false)}
-          onKeyDown={e => e.key === "Escape" && setMenuOpen(false)}
+          onClick={closeMenu}
+          onKeyDown={e => e.key === "Escape" && closeMenu()}
           style={{
             position: "fixed",
             inset: 0,
@@ -150,7 +157,7 @@ export function Nav() {
           <button
             type="button"
             aria-label="Close menu"
-            onClick={() => setMenuOpen(false)}
+            onClick={closeMenu}
             style={{
               position: "absolute",
               top: 20,
@@ -170,7 +177,7 @@ export function Nav() {
           </button>
           <Link
             href="/"
-            onClick={() => setMenuOpen(false)}
+            onClick={closeMenu}
             style={{ display: "block", flexShrink: 0, marginBottom: 8, textDecoration: "none" }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -181,15 +188,15 @@ export function Nav() {
               style={{ display: "block", mixBlendMode: "screen", width: 140, height: "auto" }}
             />
           </Link>
-          {NAV_LINKS.map(l => (
-            <a
-              key={l}
-              href="#"
-              onClick={() => setMenuOpen(false)}
-              style={{ ...linkStyle, fontSize: 16, padding: "12px 0", color: T.coldW }}
+          {MARKETING_NAV.map(({ label, href }) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={closeMenu}
+              style={{ ...linkStyle(pathname === href), fontSize: 16, padding: "12px 0", color: pathname === href ? T.coldW : T.muted }}
             >
-              {l}
-            </a>
+              {label}
+            </Link>
           ))}
           <div className="nav-wallet-wrap" style={{ marginTop: 16 }}>
             <LandingNavCta />

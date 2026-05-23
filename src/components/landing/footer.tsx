@@ -1,8 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { T } from "./shared";
-
-const links = ["Privacy Policy", "Terms of Use", "Contact"];
+import { MARKETING_FOOTER } from "@/lib/marketing/routes";
 
 export function Footer() {
   return (
@@ -26,9 +26,11 @@ export function Footer() {
         <div style={{ fontSize: 12, color: T.muted }}>
           © 2025 QBridge. All rights reserved. Not a retail investment product.
         </div>
-        <div style={{ display: "flex", gap: 32 }}>
-          {links.map(l => (
-            <a key={l} href="#" style={{ fontSize: 12, color: T.muted, textDecoration: "none" }}>{l}</a>
+        <div style={{ display: "flex", gap: 32, flexWrap: "wrap" }}>
+          {MARKETING_FOOTER.map(({ label, href }) => (
+            <Link key={href} href={href} style={{ fontSize: 12, color: T.muted, textDecoration: "none" }}>
+              {label}
+            </Link>
           ))}
         </div>
       </div>
