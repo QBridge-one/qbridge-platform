@@ -1,0 +1,255 @@
+/*
+ * Insights styles — bundled by Next.js via direct import from the insights
+ * pages, so they reliably flow through the standard CSS pipeline (no
+ * dependency on inline <style> hoisting or hydration timing).
+ *
+ * Color tokens are hardcoded here intentionally — they must match the values
+ * in src/components/landing/shared.tsx (T.navy, T.navyMid, etc.) and are
+ * declared as CSS custom properties at the top of the file to make audits easy.
+ *
+ * If you change a token in shared.tsx, change it here too.
+ */
+
+:root {
+  --ip-navy: #080E1A;
+  --ip-navy-mid: #0B1730;
+  --ip-navy-bdr: #17355F;
+  --ip-cold-white: #F2F7FF;
+  --ip-prose-muted: #D6E2F2;
+  --ip-gold: #1A6FC4;
+  --ip-accent: #4EA1F6;
+  --ip-muted: #8FAACB;
+  --ip-border: rgba(78, 161, 246, 0.12);
+}
+
+/* ----- Body bg fallback ----------------------------------------------------
+ * On the insights routes, force <body> to the navy backdrop so that even if
+ * the MarketingShell wrapper styles fail to paint, no white shows through.
+ */
+body:has(.ip-article),
+body:has(.qb-insights-listing) {
+  background-color: var(--ip-navy) !important;
+}
+
+/* ----- Post page ----------------------------------------------------------- */
+
+.ip-article {
+  background-color: var(--ip-navy) !important;
+  color: var(--ip-cold-white);
+  min-height: 100vh;
+}
+
+.ip-shell {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 32px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.ip-header {
+  background-color: var(--ip-navy) !important;
+  padding: 120px 0 32px;
+  border-bottom: 1px solid var(--ip-border);
+}
+
+.ip-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ip-muted);
+  margin-bottom: 24px;
+}
+.ip-crumbs a {
+  color: var(--ip-gold);
+  text-decoration: none;
+}
+.ip-crumbs a:hover {
+  color: var(--ip-cold-white);
+}
+
+.ip-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(28px, 4.5vw, 44px);
+  line-height: 1.15;
+  font-weight: 700;
+  color: var(--ip-cold-white);
+  margin: 0 0 20px;
+}
+
+.ip-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--ip-muted);
+  letter-spacing: 0.04em;
+}
+.ip-meta .ip-author { color: var(--ip-cold-white); font-weight: 600; }
+.ip-meta .ip-sep { color: var(--ip-navy-bdr); }
+
+.ip-body {
+  background-color: var(--ip-navy) !important;
+  padding: 48px 0 64px;
+  color: var(--ip-prose-muted);
+}
+
+/* Prose-wide defaults — every element inside the post body inherits these,
+ * which guarantees consistent foreground color even if a future post helper
+ * forgets to set an explicit color. */
+.ip-body p,
+.ip-body li,
+.ip-body blockquote,
+.ip-body aside {
+  color: var(--ip-prose-muted);
+}
+.ip-body h1,
+.ip-body h2,
+.ip-body h3,
+.ip-body h4,
+.ip-body strong {
+  color: var(--ip-cold-white);
+}
+
+.ip-tags {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--ip-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ip-tag {
+  padding: 5px 12px;
+  border-radius: 2px;
+  border: 1px solid var(--ip-navy-bdr);
+  color: var(--ip-muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ip-related {
+  background-color: var(--ip-navy-mid) !important;
+  border-top: 1px solid var(--ip-border);
+  padding: 64px 0 96px;
+}
+.ip-related-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ip-gold);
+  margin-bottom: 16px;
+}
+
+@media (max-width: 1023px) {
+  .ip-header { padding: 104px 0 28px; }
+  .ip-body { padding: 40px 0 56px; }
+  .ip-related { padding: 56px 0 80px; }
+}
+
+@media (max-width: 639px) {
+  .ip-shell { padding: 0 16px; }
+  .ip-header { padding: 96px 0 24px; }
+  .ip-crumbs { font-size: 10px; gap: 6px; margin-bottom: 20px; }
+  .ip-meta { font-size: 11px; gap: 8px 10px; }
+  .ip-meta .ip-sep { display: none; }
+  .ip-body { padding: 32px 0 48px; }
+  .ip-tags { margin-top: 40px; }
+  .ip-related { padding: 48px 0 72px; }
+}
+
+/* ----- Listing pages (/insights and /insights/category/...) --------------- */
+
+.qb-insights-listing {
+  background-color: var(--ip-navy) !important;
+  color: var(--ip-cold-white);
+  padding: 56px 0 96px;
+  min-height: 60vh;
+}
+.qb-insights-shell {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 32px;
+  box-sizing: border-box;
+  width: 100%;
+}
+.qb-insights-empty {
+  color: var(--ip-muted);
+  font-size: 16px;
+}
+
+@media (max-width: 1023px) {
+  .qb-insights-listing { padding: 48px 0 80px; }
+}
+@media (max-width: 639px) {
+  .qb-insights-listing { padding: 40px 0 72px; }
+  .qb-insights-shell { padding: 0 16px; }
+}
+
+/* ----- Post-card hover + mobile ------------------------------------------ */
+
+.qb-insight-card { transition: background 0.2s; }
+.qb-insight-card:hover .qb-insight-card-title { color: var(--ip-accent); }
+@media (max-width: 639px) {
+  .qb-insight-card { padding: 22px 0 !important; }
+  .qb-insight-card-meta { font-size: 10px !important; gap: 10px !important; }
+  .qb-insight-card-sep { display: none; }
+}
+
+/* ----- Category chips ---------------------------------------------------- */
+
+.qb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 40px;
+}
+.qb-chip {
+  padding: 7px 16px;
+  border-radius: 2px;
+  border: 1px solid var(--ip-navy-bdr);
+  background: transparent;
+  color: var(--ip-muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  white-space: nowrap;
+}
+.qb-chip:hover {
+  color: var(--ip-cold-white);
+  border-color: var(--ip-gold);
+}
+.qb-chip.is-active {
+  border-color: var(--ip-gold);
+  background: rgba(26, 111, 196, 0.12);
+  color: var(--ip-cold-white);
+}
+
+@media (max-width: 639px) {
+  .qb-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: 0 -16px 32px;
+    padding: 0 16px 4px;
+    gap: 8px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .qb-chips::-webkit-scrollbar { display: none; }
+  .qb-chip { font-size: 10px; padding: 6px 12px; }
+}
