@@ -1,5 +1,5 @@
 import { MARKETING_FOOTER, MARKETING_NAV } from "@/lib/marketing/routes";
-import { siteUrl } from "@/lib/marketing/site-url";
+import { QBRIDGE_LINKEDIN_URL, siteUrl } from "@/lib/marketing/site-url";
 
 export function LandingStructuredData() {
   const schema = {
@@ -13,6 +13,7 @@ export function LandingStructuredData() {
         logo: `${siteUrl}/qbridge-logo.png`,
         description:
           "Institutional-grade blockchain rails for real-world asset tokenization with compliance, identity controls, and auditability built into the protocol layer.",
+        sameAs: [QBRIDGE_LINKEDIN_URL],
       },
       {
         "@type": "WebSite",
