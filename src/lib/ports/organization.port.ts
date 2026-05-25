@@ -53,6 +53,11 @@ export interface OrganizationPort {
    *  ops/non-issuer orgs. */
   setIssuerKybDecision(orgId: string, input: IssuerKybDecisionInput): Promise<AppOrg>;
 
+  /** Merge partial metadata into the org's publicMetadata (Clerk) or
+   *  equivalent. Used by the KYB verification webhook to persist
+   *  kybCase snapshots without overwriting other fields. */
+  updateOrgMetadata(orgId: string, partial: Record<string, unknown>): Promise<AppOrg>;
+
   // ── Membership ───────────────────────────────────────────
   /** @deprecated Use setMemberRoles. Sets the primary role to a single
    *  value (replaces appRoles with [appRole]). Kept for back-compat. */

@@ -11,6 +11,7 @@ import type {
   IssuerKybReview,
   IssuerKybStatus,
 } from "./issuer-kyb";
+import type { KybCase } from "./kyb-verification";
 
 // ─── Plane ───────────────────────────────────────────────────
 // Two distinct planes of access in QBridge.
@@ -105,6 +106,9 @@ export interface AppOrg {
   /** Latest decision metadata (approved/rejected, reviewer, reason). Null
    *  while pending or before any decision has been recorded. */
   kybReview: IssuerKybReview | null;
+  /** Third-party KYB verification case (Persona / Sumsub). Null until
+   *  the issuer starts the verification flow in step 2. */
+  kybCase: KybCase | null;
   createdAt: string;
 }
 

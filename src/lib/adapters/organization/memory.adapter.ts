@@ -105,6 +105,21 @@ class MemoryOrganizationAdapter implements OrganizationPort {
     return memoryOrganizationStore.setIssuerKybDecision(orgId, input);
   }
 
+  async updateOrgMetadata(
+    orgId: string,
+    partial: Record<string, unknown>,
+  ): Promise<AppOrg> {
+    const org = memoryOrganizationStore.getOrg(orgId);
+    if (!org) throw orgNotFound(orgId);
+    // Memory adapter: merge partial into the org object directly.
+    // This is a rough approximation — real metadata lives in Clerk.
+    const updated: AppOrg = {
+      ...org,
+      kybCase: partial.kybCase != null ? partial.kybCase as AppOrg["kybCase"] : org.kybCase,
+    };
+    return updated;
+  }
+
   async updateMemberRole(
     orgId: string,
     userId: string,

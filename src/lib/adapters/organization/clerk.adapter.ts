@@ -35,6 +35,7 @@ import {
   orgNotFound,
 } from "../../core/errors";
 import { kybFieldsFromOrganizationPublicMeta } from "../clerk/issuer-metadata";
+import { kybCaseFromMetadata } from "../../core/kyb-verification";
 import {
   mapRoleFromClerk,
   mapRoleToClerk,
@@ -112,6 +113,7 @@ function mapOrg(o: ClerkOrg): AppOrg {
     kybStatus: kyb.kybStatus,
     kybApplication: kyb.kybApplication,
     kybReview: kyb.kybReview,
+    kybCase: kybCaseFromMetadata(o.publicMetadata),
     createdAt: new Date(o.createdAt).toISOString(),
   };
 }
@@ -356,6 +358,24 @@ class ClerkOrganizationAdapter implements OrganizationPort {
         kybStatus: input.decision,
         kybReview: review,
       },
+    });
+    const fresh = await cc.organizations.getOrganization({ organizationId: orgId });
+    return mapOrg(fresh);
+  }
+
+  async updateOrgMetadata(
+    orgId: string,
+    partial: Record<string, unknown>,
+  ): Promise<AppOrg> {
+    const cc = await clerkClient();
+    const o = await cc.organizations.getOrganization({ organizationId: orgId }).catch(() => null);
+    if (!o) throw orgNotFound(orgId);
+    const existing =
+      o.publicMetadata != null && typeof o.publicMetadata === "object"
+        ? { ...(o.publicMetadata as Record<string, unknown>) }
+        : {};
+    await cc.organizations.updateOrganization(orgId, {
+      publicMetadata: { ...existing, ...partial },
     });
     const fresh = await cc.organizations.getOrganization({ organizationId: orgId });
     return mapOrg(fresh);

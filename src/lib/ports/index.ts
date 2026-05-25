@@ -15,3 +15,4 @@ export type { WalletLinkPort } from "./wallet-link.port";
 export type { AuditLogPort } from "./audit-log.port";
 export type { NotificationPort } from "./notification.port";
 export type { EmailPort } from "./email.port";
+export type { KybVerificationPort } from "./kyb-verification.port";

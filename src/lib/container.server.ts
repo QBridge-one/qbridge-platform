@@ -45,6 +45,7 @@ import { memoryWalletLinkAdapter } from "./adapters/wallet-link/memory.adapter";
 import { clerkWalletLinkAdapter } from "./adapters/wallet-link/clerk.adapter";
 import { memoryAuditLogAdapter } from "./adapters/audit-log/memory.adapter";
 import { drizzleAuditLogAdapter } from "./adapters/audit-log/drizzle.adapter";
+import { personaKybAdapter } from "./adapters/kyb-verification/persona.adapter";
 import { memoryNotificationAdapter } from "./adapters/notification/memory.adapter";
 import { drizzleNotificationAdapter } from "./adapters/notification/drizzle.adapter";
 import { consoleEmailAdapter } from "./adapters/email/console.adapter";
@@ -128,6 +129,13 @@ export const emailAdapter =
  *  degrades gracefully (notifications skip; state changes still apply). */
 export const OPS_ORG_ID = process.env.OPS_ORG_ID?.trim() || null;
 
+// ─── KYB verification provider switch ───────────────────────
+// KYB_PROVIDER  = "persona"   (default when PERSONA_API_KEY set)
+// Today only Persona is wired; future adapters (Sumsub, manual)
+// plug in here with the same port. When the env var is missing
+// the adapter is still exported but will throw on first use.
+export const kybVerificationAdapter = personaKybAdapter;
+
 export type { IdentityPort } from "./ports/identity.port";
 export type { OrganizationPort } from "./ports/organization.port";
 export type { AuthWebhookPort } from "./ports/auth-webhook.port";
@@ -135,3 +143,4 @@ export type { WalletLinkPort } from "./ports/wallet-link.port";
 export type { AuditLogPort } from "./ports/audit-log.port";
 export type { NotificationPort } from "./ports/notification.port";
 export type { EmailPort } from "./ports/email.port";
+export type { KybVerificationPort } from "./ports/kyb-verification.port";

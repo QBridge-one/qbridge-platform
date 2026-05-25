@@ -60,6 +60,7 @@ class MemoryOrganizationStore {
       kybStatus: input.kind === "issuer" ? "approved" : null,
       kybApplication: null,
       kybReview: null,
+      kybCase: null,
       createdAt: new Date().toISOString(),
     };
     this.orgs.set(id, org);
@@ -212,6 +213,7 @@ class MemoryOrganizationStore {
         submittedAt,
       },
       kybReview: null,
+      kybCase: null,
     };
     this.orgs.set(orgId, next);
     return next;

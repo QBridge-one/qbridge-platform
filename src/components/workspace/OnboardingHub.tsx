@@ -12,6 +12,7 @@ import { CheckCircle2, Circle, Clock, AlertTriangle, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { AppOrg } from "@/lib/core/identity.types";
+import { PersonaVerification } from "./PersonaVerification";
 
 type StepState =
   | { kind: "done"; subtitle: string }
@@ -27,6 +28,7 @@ interface Step {
   description: string;
   state: StepState;
   cta?: { label: string; href: string; variant?: "default" | "outline" };
+  customContent?: React.ReactNode;
 }
 
 export function OnboardingHub({ org }: { org: AppOrg }) {
@@ -54,16 +56,7 @@ function buildSteps(org: AppOrg): Step[] {
   const application = applicationStep(org);
   return [
     application,
-    {
-      number: 2,
-      title: "KYB verification",
-      description:
-        "Beneficial owners, sanctions screening, and registry checks. Provided by Sumsub. Required before launching your first offering.",
-      state: stepGatingByApplication(org, {
-        kind: "coming_soon",
-        subtitle: "Sumsub integration in progress",
-      }),
-    },
+    kybVerificationStep(org),
     {
       number: 3,
       title: "Compliance setup",
@@ -145,6 +138,66 @@ function stepGatingByApplication(org: AppOrg, defaultState: StepState): StepStat
   return defaultState;
 }
 
+function kybVerificationStep(org: AppOrg): Step {
+  const base = {
+    number: 2,
+    title: "Identity verification",
+    description:
+      "Beneficial owners, sanctions screening, and document verification. Processed by our compliance partner. Required before launching your first offering.",
+  } as const;
+  if (org.kybStatus !== "approved") {
+    return {
+      ...base,
+      state: { kind: "locked", subtitle: "Complete the issuer application first" },
+    };
+  }
+  const kybCase = org.kybCase;
+  if (!kybCase) {
+    return {
+      ...base,
+      state: { kind: "available", subtitle: "Ready to start" },
+      customContent: <PersonaVerification orgId={org.id} existingCase={null} />,
+    };
+  }
+  switch (kybCase.status) {
+    case "approved":
+      return {
+        ...base,
+        state: {
+          kind: "done",
+          subtitle: `Verified on ${new Date(kybCase.updatedAt).toLocaleDateString()}`,
+        },
+      };
+    case "declined":
+    case "failed":
+      return {
+        ...base,
+        state: {
+          kind: "action_required",
+          subtitle: "Verification was not successful — retry with updated documents",
+        },
+        customContent: <PersonaVerification orgId={org.id} existingCase={kybCase} />,
+      };
+    case "expired":
+      return {
+        ...base,
+        state: { kind: "action_required", subtitle: "Verification expired — please restart" },
+        customContent: <PersonaVerification orgId={org.id} existingCase={kybCase} />,
+      };
+    default:
+      return {
+        ...base,
+        state: {
+          kind: "in_progress",
+          subtitle: kybCase.status === "needs_review"
+            ? "Under manual review by our compliance partner"
+            : "Verification in progress",
+        },
+        customContent: <PersonaVerification orgId={org.id} existingCase={kybCase} />,
+      };
+  }
+}
+
 function StepCard({ step, isLast }: { step: Step; isLast: boolean }) {
   const { Icon, ringClass, badgeClass, badgeLabel } = stateVisuals(step.state);
   return (
@@ -183,6 +236,10 @@ function StepCard({ step, isLast }: { step: Step; isLast: boolean }) {
               <Link href={step.cta.href}>{step.cta.label}</Link>
             </Button>
           </div>
+        ) : null}
+
+        {step.customContent ? (
+          <div className="mt-4">{step.customContent}</div>
         ) : null}
       </div>
     </li>

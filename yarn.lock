@@ -6539,6 +6539,11 @@ locate-path@^6.0.0:
   dependencies:
     p-locate "^5.0.0"
 
+lodash.kebabcase@^4.1.1:
+  version "4.1.1"
+  resolved "https://registry.yarnpkg.com/lodash.kebabcase/-/lodash.kebabcase-4.1.1.tgz#8489b1cb0d29ff88195cceca448ff6d6cc295c36"
+  integrity sha512-N8XRTIMMqqDgSy4VLKPnJ/+hpGZN+PHQiJnSenYqPaVV/NCqEogTnAdZLQiGKhxX+JCs8waWq2t1XHWKOmlY8g==
+
 lodash.merge@^4.6.2:
   version "4.6.2"
   resolved "https://registry.npmjs.org/lodash.merge/-/lodash.merge-4.6.2.tgz"
@@ -7194,6 +7199,14 @@ permissionless@^0.3.2, permissionless@^0.3.4:
   resolved "https://registry.npmjs.org/permissionless/-/permissionless-0.3.4.tgz"
   integrity sha512-pml3Do0e/AMoAq89tzpXlhhxmVdOigQCCoC+df/kRCVFiJ9pQTgzKQKhxYTWWB2xW/AOgwBwGzLBfqFZrDpFiA==
 
+persona@^5.8.0:
+  version "5.8.0"
+  resolved "https://registry.yarnpkg.com/persona/-/persona-5.8.0.tgz#3e66008f4ce7f204b43406f0cd344bc2eba70613"
+  integrity sha512-LMZ9MB7lF43pjLpgC91BL8xMkr61MVi9x0iArS21oo6J/uGcUkr7fcw2eF3xBVuFmKj6+Zj19LBXV/nBMX/LNQ==
+  dependencies:
+    lodash.kebabcase "^4.1.1"
+    qs "^6.15.0"
+
 picocolors@^1.0.0, picocolors@^1.1.1:
   version "1.1.1"
   resolved "https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz"
@@ -7363,6 +7376,13 @@ qs@^6.14.0, qs@^6.14.1:
   version "6.15.0"
   resolved "https://registry.npmjs.org/qs/-/qs-6.15.0.tgz"
   integrity sha512-mAZTtNCeetKMH+pSjrb76NAM8V9a05I9aBZOHztWy/UqcJdQYNsf59vrRKWnojAT9Y+GbIvoTBC++CPHqpDBhQ==
+  dependencies:
+    side-channel "^1.1.0"
+
+qs@^6.15.0:
+  version "6.15.2"
+  resolved "https://registry.yarnpkg.com/qs/-/qs-6.15.2.tgz#fd55426d710403ddccc45e0f9eab16db7727ece9"
+  integrity sha512-Rzq0KEyX/w/tEybncDgdkZrJgVUsUMk3xjh3t5bv3S1HTAtg+uOYt72+ZfwiQwKdysThkTBdL/rTi6HDmX9Ddw==
   dependencies:
     side-channel "^1.1.0"
 
