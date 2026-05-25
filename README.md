@@ -6,6 +6,8 @@ Application source lives under **`src/`** (`src/app`, `src/components`, `src/lib
 
 **Notifications & email pipeline:** [`docs/notifications-and-email.md`](docs/notifications-and-email.md) — providers (Clerk / Neon / Vercel / Railway / Resend / Zoho), notification fanout, email outbox, local-dev vs production setup, full env-var reference, troubleshooting.
 
+**KYB verification provider:** [`docs/kyb-verification-provider.md`](docs/kyb-verification-provider.md) — Persona integration (step 2 of onboarding), architecture diagram, webhook setup, env vars, and how to swap to Sumsub later via the KybVerificationPort.
+
 ## Getting Started
 
 First, run the development server:
