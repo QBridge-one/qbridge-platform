@@ -79,8 +79,8 @@ export default async function OpsIssuerReviewPage({
       <header className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">Issuer applications</h1>
         <p className="text-sm text-muted-foreground">
-          Review pending issuer applications. Approvals unlock the issuer workspace; rejections
-          require a reason and let the issuer resubmit.
+          Review issuer applications and track both off-chain application status and on-chain
+          IssuerRegistry registration.
         </p>
       </header>
       <IssuerReviewQueue

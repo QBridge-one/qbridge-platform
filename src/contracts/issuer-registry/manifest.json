@@ -1,0 +1,138 @@
+{
+  "contractName": "IssuerRegistry",
+  "featureKey": "issuer-registry",
+  "contractAddressKey": "issuerRegistry",
+  "abiPath": "contracts/issuer-registry/abi.json",
+  "functions": {
+    "include": [
+      "isApproved",
+      "getIssuer",
+      "getStatus",
+      "getWalletEntity",
+      "getEntityWallet",
+      "getMigratedTo",
+      "defaultExpirationDuration",
+      "authority",
+      "registerIssuer",
+      "suspendIssuer",
+      "revokeIssuer",
+      "reactivateIssuer",
+      "migrateWallet",
+      "setDefaultExpirationDuration"
+    ],
+    "overrides": {
+      "isApproved": {
+        "displayName": "Check Issuer Approval",
+        "description": "Returns true if the wallet is Approved and the registration has not expired. Used as the on-chain gate for token deployment.",
+        "dangerous": false,
+        "paramLabels": {
+          "wallet": "Issuer Wallet Address"
+        }
+      },
+      "getIssuer": {
+        "displayName": "Get Issuer Record",
+        "description": "Read the full on-chain issuer struct: status, expiration, verifier, entity ID, and KYB document hash.",
+        "dangerous": false,
+        "paramLabels": {
+          "wallet": "Issuer Wallet Address"
+        }
+      },
+      "getStatus": {
+        "displayName": "Get Issuer Status",
+        "description": "Read the issuer lifecycle status for a wallet (NotRegistered, Approved, Suspended, Revoked, or Migrated).",
+        "dangerous": false,
+        "paramLabels": {
+          "wallet": "Issuer Wallet Address"
+        }
+      },
+      "getWalletEntity": {
+        "displayName": "Get Entity ID for Wallet",
+        "description": "Resolve the entity ID bound to an issuer wallet address.",
+        "dangerous": false,
+        "paramLabels": {
+          "wallet": "Issuer Wallet Address"
+        }
+      },
+      "getEntityWallet": {
+        "displayName": "Get Wallet for Entity",
+        "description": "Resolve the current wallet address bound to an entity ID.",
+        "dangerous": false,
+        "paramLabels": {
+          "entityId": "Entity ID (bytes32)"
+        }
+      },
+      "getMigratedTo": {
+        "displayName": "Get Migration Target",
+        "description": "If a wallet was migrated, returns the new wallet address that replaced it.",
+        "dangerous": false,
+        "paramLabels": {
+          "oldWallet": "Former Issuer Wallet Address"
+        }
+      },
+      "defaultExpirationDuration": {
+        "displayName": "Default Expiration Duration",
+        "description": "Current default validity period (seconds) applied to new registrations and wallet migrations.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "authority": {
+        "displayName": "Access Manager Authority",
+        "description": "Address of the PlatformAccessManager that controls who may call restricted functions.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "registerIssuer": {
+        "displayName": "Register Issuer",
+        "description": "Register a new issuer or re-register a revoked issuer with fresh KYB. Binds wallet, entity ID, and KYB document hash on-chain.",
+        "dangerous": false,
+        "paramLabels": {
+          "wallet": "Issuer Wallet Address",
+          "entityId": "Entity ID (bytes32)",
+          "kybDocumentHash": "KYB Document Hash (bytes32)"
+        }
+      },
+      "suspendIssuer": {
+        "displayName": "Suspend Issuer",
+        "description": "Suspend an approved issuer. Expiration and document hash are preserved; isApproved becomes false until reactivated.",
+        "dangerous": true,
+        "paramLabels": {
+          "wallet": "Issuer Wallet Address"
+        }
+      },
+      "revokeIssuer": {
+        "displayName": "Revoke Issuer",
+        "description": "Permanently revoke an issuer. Re-entry requires registerIssuer with fresh KYB.",
+        "dangerous": true,
+        "paramLabels": {
+          "wallet": "Issuer Wallet Address"
+        }
+      },
+      "reactivateIssuer": {
+        "displayName": "Reactivate Issuer",
+        "description": "Move a suspended issuer back to Approved. Does not extend expiresAt if already expired.",
+        "dangerous": false,
+        "paramLabels": {
+          "wallet": "Issuer Wallet Address"
+        }
+      },
+      "migrateWallet": {
+        "displayName": "Migrate Issuer Wallet",
+        "description": "Move an entity's approval from an old wallet to a new wallet with a fresh KYB document hash.",
+        "dangerous": true,
+        "paramLabels": {
+          "entityId": "Entity ID (bytes32)",
+          "newWallet": "New Issuer Wallet Address",
+          "newKybDocumentHash": "New KYB Document Hash (bytes32)"
+        }
+      },
+      "setDefaultExpirationDuration": {
+        "displayName": "Set Default Expiration",
+        "description": "Update the default validity period for future registerIssuer and migrateWallet calls. Does not retroactively change existing issuers.",
+        "dangerous": false,
+        "paramLabels": {
+          "newDuration": "Duration (seconds)"
+        }
+      }
+    }
+  }
+}

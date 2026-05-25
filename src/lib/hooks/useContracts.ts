@@ -19,7 +19,7 @@ type Address = `0x${string}`;
 export interface ContractAddresses {
   platformAccessManager: Address | null;
   tokenAccessManager: Address | null;
-  // Add future contracts here as the platform grows
+  issuerRegistry: Address | null;
   isSupported: boolean;
   chainId: number;
 }
@@ -31,6 +31,7 @@ export function useContracts(): ContractAddresses {
     return {
       platformAccessManager: null,
       tokenAccessManager: null,
+      issuerRegistry: null,
       isSupported: false,
       chainId,
     };
@@ -41,6 +42,7 @@ export function useContracts(): ContractAddresses {
     return {
       platformAccessManager: contracts.platformAccessManager || null,
       tokenAccessManager: contracts.tokenAccessManager || null,
+      issuerRegistry: contracts.issuerRegistry || null,
       isSupported: true,
       chainId,
     };
@@ -48,6 +50,7 @@ export function useContracts(): ContractAddresses {
     return {
       platformAccessManager: null,
       tokenAccessManager: null,
+      issuerRegistry: null,
       isSupported: false,
       chainId,
     };
@@ -65,6 +68,11 @@ export function usePlatformAMAddress(): Address | null {
 export function useTokenAMAddress(): Address | null {
   const { tokenAccessManager } = useContracts();
   return tokenAccessManager;
+}
+
+export function useIssuerRegistryAddress(): Address | null {
+  const { issuerRegistry } = useContracts();
+  return issuerRegistry;
 }
 
 export function useContractAddress(contractKey: string): Address | null {

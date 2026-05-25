@@ -40,38 +40,15 @@ import {
 import { usePlatformAMAddress, useTokenAMAddress } from "@/lib/hooks/useContracts";
 import { useChainId, useSwitchChain } from "wagmi";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { notifyTxSuccess } from "@/lib/notify-tx-success";
+import { explorerAddressUrl, explorerTxUrl } from "@/lib/explorer-urls";
 
 /** Deployment chain the wallet must be on. Mirrors src/config/web3auth.ts. */
 const EXPECTED_CHAIN_ID =
   process.env.NEXT_PUBLIC_WEB3AUTH_NETWORK === "mainnet" ? 1 : 11155111;
 
-function explorerAddressUrl(chainId: number, address: string): string | null {
-  if (chainId === 11155111) return `https://sepolia.etherscan.io/address/${address}`;
-  if (chainId === 1) return `https://etherscan.io/address/${address}`;
-  if (chainId === 137) return `https://polygonscan.com/address/${address}`;
-  return null;
-}
-
-function explorerTxUrl(chainId: number, hash: string): string | null {
-  if (chainId === 11155111) return `https://sepolia.etherscan.io/tx/${hash}`;
-  if (chainId === 1) return `https://etherscan.io/tx/${hash}`;
-  if (chainId === 137) return `https://polygonscan.com/tx/${hash}`;
-  return null;
-}
-
 function notifyRoleTxSuccess(chainId: number, hash: Hex, roleLabel: string) {
-  const url = explorerTxUrl(chainId, hash);
-  toast.success(`${roleLabel}: updated on-chain`, {
-    description: "Transaction confirmed in a block.",
-    action: url
-      ? {
-          label: "View transaction",
-          onClick: () => window.open(url, "_blank", "noopener,noreferrer"),
-        }
-      : undefined,
-    duration: 12000,
-  });
+  notifyTxSuccess(`${roleLabel}: updated on-chain`, chainId, hash);
 }
 
 function isSameAddress(a: string | null | undefined, b: string | null | undefined): boolean {

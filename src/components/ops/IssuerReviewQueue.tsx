@@ -41,6 +41,11 @@ import {
 } from "@/components/ui/table";
 import type { AppOrg } from "@/lib/core/identity.types";
 import type { IssuerKybStatus } from "@/lib/core/issuer-kyb";
+import { IssuerRegistryOnChainSection } from "@/components/ops/IssuerRegistryOnChainSection";
+import type {
+  IssuerRegistryRowStatus,
+  IssuerRegistryStatusMap,
+} from "@/lib/contracts/issuer-registry-status";
 
 type TabKey = "submitted" | "approved" | "rejected" | "all";
 type SortKey = "name" | "legalEntity" | "jurisdiction" | "submittedAt" | "status";
@@ -53,7 +58,7 @@ const TAB_LABEL: Record<TabKey, string> = {
   rejected: "Action required",
 };
 
-const STATUS_BADGE: Partial<
+const KYB_STATUS_BADGE: Partial<
   Record<IssuerKybStatus, { label: string; cls: string }>
 > = {
   submitted: {
@@ -74,6 +79,36 @@ const STATUS_BADGE: Partial<
   },
   draft: {
     label: "Draft",
+    cls: "border-muted-foreground/30 bg-muted text-muted-foreground",
+  },
+};
+
+const REGISTRY_STATUS_BADGE: Record<
+  IssuerRegistryRowStatus | "loading",
+  { label: string; cls: string }
+> = {
+  approved: {
+    label: "KYB verified",
+    cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200",
+  },
+  not_registered: {
+    label: "Not verified",
+    cls: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-200",
+  },
+  no_wallet: {
+    label: "No wallet",
+    cls: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-200",
+  },
+  no_admin: {
+    label: "No admin",
+    cls: "border-muted-foreground/30 bg-muted text-muted-foreground",
+  },
+  unconfigured: {
+    label: "N/A",
+    cls: "border-muted-foreground/30 bg-muted text-muted-foreground",
+  },
+  loading: {
+    label: "…",
     cls: "border-muted-foreground/30 bg-muted text-muted-foreground",
   },
 };
@@ -116,6 +151,33 @@ export function IssuerReviewQueue({
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("submittedAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [registryByOrg, setRegistryByOrg] = useState<IssuerRegistryStatusMap>({});
+  const [registryLoading, setRegistryLoading] = useState(false);
+
+  const refreshRegistryStatus = useCallback(async (orgIds: string[]) => {
+    if (orgIds.length === 0) {
+      setRegistryByOrg({});
+      return;
+    }
+    setRegistryLoading(true);
+    try {
+      const res = await fetch("/api/ops/issuers/registry-status", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ orgIds }),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { statuses?: IssuerRegistryStatusMap };
+      setRegistryByOrg(data.statuses ?? {});
+    } finally {
+      setRegistryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshRegistryStatus(initialOrgs.map((o) => o.id));
+  }, [initialOrgs, refreshRegistryStatus]);
 
   // Drawer selection is initialized from the server's focused org +
   // synced whenever that prop changes (e.g. bell click while already
@@ -164,10 +226,9 @@ export function IssuerReviewQueue({
       const qs = params.toString();
       router.replace(qs ? `/ops/admin/issuers?${qs}` : "/ops/admin/issuers");
     }
-    // Re-render the server component so the table reflects the new
-    // status of the org we just acted on (and any teammate's edits).
     router.refresh();
-  }, [router, searchParams]);
+    await refreshRegistryStatus(initialOrgs.map((o) => o.id));
+  }, [router, searchParams, refreshRegistryStatus, initialOrgs]);
 
   const filteredAndSorted = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -254,12 +315,13 @@ export function IssuerReviewQueue({
                 onSort={onSort}
               />
               <SortableHead
-                label="Status"
+                label="Application"
                 column="status"
                 sortKey={sortKey}
                 sortDir={sortDir}
                 onSort={onSort}
               />
+              <TableHead>On-chain KYB</TableHead>
               <TableHead className="w-32 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -267,7 +329,7 @@ export function IssuerReviewQueue({
             {filteredAndSorted.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="py-12 text-center text-sm text-muted-foreground"
                 >
                   {search
@@ -280,6 +342,11 @@ export function IssuerReviewQueue({
                 <IssuerTableRow
                   key={o.id}
                   org={o}
+                  registryStatus={
+                    registryLoading && !registryByOrg[o.id]
+                      ? "loading"
+                      : (registryByOrg[o.id]?.status ?? "unconfigured")
+                  }
                   onReview={() => setSelected(o)}
                 />
               ))
@@ -292,6 +359,7 @@ export function IssuerReviewQueue({
         org={selected}
         onOpenChange={onDrawerOpenChange}
         onSettled={onDecisionSettled}
+        onRegistryUpdated={() => void refreshRegistryStatus(initialOrgs.map((o) => o.id))}
       />
     </div>
   );
@@ -368,12 +436,15 @@ function SortableHead({
 
 function IssuerTableRow({
   org,
+  registryStatus,
   onReview,
 }: {
   org: AppOrg;
+  registryStatus: IssuerRegistryRowStatus | "loading";
   onReview: () => void;
 }) {
-  const badge = STATUS_BADGE[org.kybStatus ?? "none"];
+  const kybBadge = KYB_STATUS_BADGE[org.kybStatus ?? "none"];
+  const registryBadge = REGISTRY_STATUS_BADGE[registryStatus];
   const submitted = org.kybApplication?.submittedAt
     ? new Date(org.kybApplication.submittedAt).toLocaleString()
     : "—";
@@ -389,11 +460,16 @@ function IssuerTableRow({
       </TableCell>
       <TableCell className="text-muted-foreground text-xs">{submitted}</TableCell>
       <TableCell>
-        {badge ? (
-          <Badge variant="outline" className={`text-xs ${badge.cls}`}>
-            {badge.label}
+        {kybBadge ? (
+          <Badge variant="outline" className={`text-xs ${kybBadge.cls}`}>
+            {kybBadge.label}
           </Badge>
         ) : null}
+      </TableCell>
+      <TableCell>
+        <Badge variant="outline" className={`text-xs ${registryBadge.cls}`}>
+          {registryBadge.label}
+        </Badge>
       </TableCell>
       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
         <Button variant="outline" size="sm" onClick={onReview}>
@@ -408,18 +484,25 @@ function ReviewSheet({
   org,
   onOpenChange,
   onSettled,
+  onRegistryUpdated,
 }: {
   org: AppOrg | null;
   onOpenChange: (open: boolean) => void;
   onSettled: () => Promise<void>;
+  onRegistryUpdated: () => void;
 }) {
   const open = org !== null;
   const isSubmitted = org?.kybStatus === "submitted";
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-xl">
+      <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
         {org ? (
-          <ReviewBody org={org} canDecide={isSubmitted} onSettled={onSettled} />
+          <ReviewBody
+            org={org}
+            canDecide={isSubmitted}
+            onSettled={onSettled}
+            onRegistryUpdated={onRegistryUpdated}
+          />
         ) : null}
       </SheetContent>
     </Sheet>
@@ -430,10 +513,12 @@ function ReviewBody({
   org,
   canDecide,
   onSettled,
+  onRegistryUpdated,
 }: {
   org: AppOrg;
   canDecide: boolean;
   onSettled: () => Promise<void>;
+  onRegistryUpdated: () => void;
 }) {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState<"approve" | "reject" | null>(null);
@@ -567,6 +652,10 @@ function ReviewBody({
           </section>
         ) : null}
 
+        {org.kybStatus === "approved" ? (
+          <IssuerRegistryOnChainSection orgId={org.id} onRegistered={onRegistryUpdated} />
+        ) : null}
+
         <section className="space-y-2">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             History
@@ -642,7 +731,7 @@ function ReviewBody({
         ) : (
           <p className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             This application is not currently awaiting review. Status:{" "}
-            {STATUS_BADGE[org.kybStatus ?? "none"]?.label ?? org.kybStatus}.
+            {KYB_STATUS_BADGE[org.kybStatus ?? "none"]?.label ?? org.kybStatus}.
           </p>
         )}
       </div>
