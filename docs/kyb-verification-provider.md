@@ -177,3 +177,23 @@ All providers map to the same `KybCaseStatus` enum — the platform never sees p
 | `declined` | Rejected by provider | `declined` | `completed` (red) |
 | `expired` | Session expired before completion | `expired` | — |
 | `failed` | Provider-side error | `failed`, `errored` | — |
+
+---
+
+## 5. Open questions / TODO
+
+### Beneficial-owner / shareholder KYC inside a KYB flow
+
+During Sumsub sandbox testing, the KYB (company) level surfaced **beneficial owners / shareholders as separate individuals** that appear under "Individuals" in the Sumsub dashboard and may each need their own KYC. In the test these had to be added/reviewed **manually through the dashboard**.
+
+**TODO — figure out the real-world flow:**
+- How are UBOs/shareholders collected in production? Options:
+  1. Sumsub's company level auto-prompts the applicant to add beneficial owners during the embedded flow (each gets a sub-inquiry), OR
+  2. They're added server-side via the API when we create the company applicant (`companyInfo.beneficiaries`), OR
+  3. They're pulled from a corporate registry by Sumsub and only flagged for manual review on mismatch.
+- Decide whether QBridge collects UBO data in step 1 (application form) and passes it to Sumsub, or lets Sumsub's flow gather it.
+- Confirm whether each UBO's individual KYC blocks the overall KYB `approved` status, or whether they're tracked separately.
+- Same question for Persona's business inquiry template (associated individuals).
+- Once understood, the `companyInfo`/beneficiary payload in `sumsub.adapter.ts` → `createCase()` may need to send UBO data, and the webhook handler may need to reflect UBO-level status in the case.
+
+**Why it matters:** if UBO KYC is manual today, that's a scaling bottleneck and a compliance gap. Needs a defined, mostly-automated path before onboarding real issuers with multiple shareholders.
