@@ -27,7 +27,7 @@ export interface KybCase {
   /** Provider-assigned id (e.g. Persona inquiry id `inq_…`). */
   caseId: string;
   /** Which provider is managing this case. */
-  provider: "persona" | "sumsub" | "manual";
+  provider: VerificationProvider;
   status: KybCaseStatus;
   /** URL where the issuer can resume the verification flow if they
    *  left before completing. Null once finalized. */
@@ -53,23 +53,41 @@ export interface KybVerificationEvent {
   raw: Record<string, unknown>;
 }
 
+/** What is being verified. KYB = the legal entity; KYC = an
+ *  individual (future: role-gated members). The port + adapters
+ *  handle both; only KYB is wired into the UI today. */
+export type VerificationType = "kyb" | "kyc";
+
+/** Provider identifier — used for routing + storing which provider
+ *  owns a given case. */
+export type VerificationProvider = "persona" | "sumsub" | "manual";
+
 /** Options for creating a new verification case. */
 export interface CreateCaseInput {
-  /** Our org id — set as reference_id so webhooks can route back. */
+  /** kyb = entity (subjectId is orgId); kyc = person (subjectId is
+   *  userId). Defaults to "kyb" — KYC plumbing is not yet wired. */
+  type?: VerificationType;
+  /** The subject's id — org id for KYB, user id for KYC. Set as the
+   *  provider's reference id so webhooks can route back. */
   orgId: string;
-  /** Org name — used as the entity name in the provider. */
+  /** Subject display name — entity name (KYB) or person name (KYC). */
   orgName: string;
   /** Primary contact email — some providers require this. */
   contactEmail: string;
-  /** Additional fields the provider might need (jurisdiction, etc). */
+  /** Jurisdiction (ISO country or free text) — drives provider
+   *  routing (e.g. Canada KYB → Sumsub). */
+  jurisdiction?: string;
+  /** Additional fields the provider might need. */
   metadata?: Record<string, string>;
 }
 
 export interface CreateCaseResult {
   caseId: string;
-  /** URL or session token the client-side widget needs to open the
-   *  verification flow. For Persona this is the inquiry id that gets
-   *  passed to the embedded Client component. */
+  /** Which provider created the case — the client uses this to pick
+   *  the matching widget (Persona modal vs Sumsub Web SDK). */
+  provider: VerificationProvider;
+  /** Credential the client-side widget needs to open the flow.
+   *  Persona: the inquiry session token. Sumsub: the SDK access token. */
   sessionToken: string;
   status: KybCaseStatus;
 }

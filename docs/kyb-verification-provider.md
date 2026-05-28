@@ -2,6 +2,13 @@
 
 Step 2 of issuer onboarding — identity verification for the legal entity, beneficial owners, and sanctions screening. Handled by a third-party provider behind the `KybVerificationPort`.
 
+**Both Persona and Sumsub are wired** behind the same port. The platform picks one per case via `selectKybProvider({ jurisdiction })`:
+
+- **Global default**: `KYB_PROVIDER` (`persona` | `sumsub`, default `persona`)
+- **Per-jurisdiction override**: `KYB_JURISDICTION_PROVIDERS` (e.g. `canada:sumsub`) — matched against the issuer's application jurisdiction. Use this to route Canadian KYB to Sumsub (which supports it) while everyone else uses Persona.
+
+The chosen provider is stored on `AppOrg.kybCase.provider`, so status updates from each provider's webhook route correctly. The client widget ([KybVerificationWidget.tsx](../src/components/workspace/KybVerificationWidget.tsx)) renders the matching UI — Persona's imperative modal or Sumsub's inline `SumsubWebSdk` component — based on the `provider` returned by the start endpoint.
+
 ---
 
 ## 1. How it works today (Persona)

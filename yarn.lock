@@ -2538,6 +2538,11 @@
   resolved "https://registry.npmjs.org/@standard-schema/utils/-/utils-0.3.0.tgz"
   integrity sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g==
 
+"@sumsub/websdk-react@^2.6.2":
+  version "2.6.2"
+  resolved "https://registry.yarnpkg.com/@sumsub/websdk-react/-/websdk-react-2.6.2.tgz#2c932efab2d1f6eac454f5724215fd2945d3955e"
+  integrity sha512-DqCCrX6HtHxrUBR7944boO+wCzMfT2f+5OXeJGDgPXEf+GpyA+eNcn7D1GrFk+ydHszNNM4WwI2FKRPKcHyxkA==
+
 "@swc/helpers@0.5.15":
   version "0.5.15"
   resolved "https://registry.npmjs.org/@swc/helpers/-/helpers-0.5.15.tgz"

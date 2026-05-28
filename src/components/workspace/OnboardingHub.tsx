@@ -12,7 +12,7 @@ import { CheckCircle2, Circle, Clock, AlertTriangle, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { AppOrg } from "@/lib/core/identity.types";
-import { PersonaVerification } from "./PersonaVerification";
+import { KybVerificationWidget } from "./KybVerificationWidget";
 
 type StepState =
   | { kind: "done"; subtitle: string }
@@ -156,7 +156,7 @@ function kybVerificationStep(org: AppOrg): Step {
     return {
       ...base,
       state: { kind: "available", subtitle: "Ready to start" },
-      customContent: <PersonaVerification orgId={org.id} existingCase={null} />,
+      customContent: <KybVerificationWidget orgId={org.id} existingCase={null} />,
     };
   }
   switch (kybCase.status) {
@@ -176,13 +176,13 @@ function kybVerificationStep(org: AppOrg): Step {
           kind: "action_required",
           subtitle: "Verification was not successful — retry with updated documents",
         },
-        customContent: <PersonaVerification orgId={org.id} existingCase={kybCase} />,
+        customContent: <KybVerificationWidget orgId={org.id} existingCase={kybCase} />,
       };
     case "expired":
       return {
         ...base,
         state: { kind: "action_required", subtitle: "Verification expired — please restart" },
-        customContent: <PersonaVerification orgId={org.id} existingCase={kybCase} />,
+        customContent: <KybVerificationWidget orgId={org.id} existingCase={kybCase} />,
       };
     default:
       return {
@@ -193,7 +193,7 @@ function kybVerificationStep(org: AppOrg): Step {
             ? "Under manual review by our compliance partner"
             : "Verification in progress",
         },
-        customContent: <PersonaVerification orgId={org.id} existingCase={kybCase} />,
+        customContent: <KybVerificationWidget orgId={org.id} existingCase={kybCase} />,
       };
   }
 }

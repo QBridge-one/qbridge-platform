@@ -46,6 +46,9 @@ import { clerkWalletLinkAdapter } from "./adapters/wallet-link/clerk.adapter";
 import { memoryAuditLogAdapter } from "./adapters/audit-log/memory.adapter";
 import { drizzleAuditLogAdapter } from "./adapters/audit-log/drizzle.adapter";
 import { personaKybAdapter } from "./adapters/kyb-verification/persona.adapter";
+import { sumsubKybAdapter } from "./adapters/kyb-verification/sumsub.adapter";
+import type { KybVerificationPort } from "./ports/kyb-verification.port";
+import type { VerificationProvider } from "./core/kyb-verification";
 import { memoryNotificationAdapter } from "./adapters/notification/memory.adapter";
 import { drizzleNotificationAdapter } from "./adapters/notification/drizzle.adapter";
 import { consoleEmailAdapter } from "./adapters/email/console.adapter";
@@ -129,12 +132,68 @@ export const emailAdapter =
  *  degrades gracefully (notifications skip; state changes still apply). */
 export const OPS_ORG_ID = process.env.OPS_ORG_ID?.trim() || null;
 
-// ─── KYB verification provider switch ───────────────────────
-// KYB_PROVIDER  = "persona"   (default when PERSONA_API_KEY set)
-// Today only Persona is wired; future adapters (Sumsub, manual)
-// plug in here with the same port. When the env var is missing
-// the adapter is still exported but will throw on first use.
-export const kybVerificationAdapter = personaKybAdapter;
+// ─── KYB verification provider routing ──────────────────────
+// Two providers are wired behind the same KybVerificationPort:
+//   - Persona  (default — already set up, cheaper for simple flows)
+//   - Sumsub   (more comprehensive; supports Canada KYB)
+//
+// Selection precedence (first match wins):
+//   1. jurisdiction override map (KYB_JURISDICTION_PROVIDERS)
+//   2. global default (KYB_PROVIDER, default "persona")
+//
+// To route, e.g., Canadian issuers to Sumsub:
+//   KYB_PROVIDER=persona
+//   KYB_JURISDICTION_PROVIDERS=canada:sumsub,ca:sumsub
+//
+// The webhook routes (/api/webhooks/persona, /api/webhooks/sumsub)
+// each handle their own provider; the case's stored `provider`
+// field records which one owns it so status updates route correctly.
+const kybProviders: Record<VerificationProvider, KybVerificationPort | null> = {
+  persona: personaKybAdapter,
+  sumsub: sumsubKybAdapter,
+  manual: null,
+};
+
+const KYB_DEFAULT_PROVIDER = (
+  process.env.KYB_PROVIDER ?? "persona"
+).toLowerCase() as VerificationProvider;
+
+/** Parse "canada:sumsub,ca:sumsub" → { canada: "sumsub", ca: "sumsub" }.
+ *  Keys are lowercased jurisdiction tokens; values are provider names. */
+function parseJurisdictionMap(): Record<string, VerificationProvider> {
+  const raw = process.env.KYB_JURISDICTION_PROVIDERS?.trim();
+  if (!raw) return {};
+  const out: Record<string, VerificationProvider> = {};
+  for (const pair of raw.split(",")) {
+    const [k, v] = pair.split(":").map((s) => s.trim().toLowerCase());
+    if (k && (v === "persona" || v === "sumsub")) out[k] = v;
+  }
+  return out;
+}
+const KYB_JURISDICTION_MAP = parseJurisdictionMap();
+
+/** Pick the verification provider for a case. Pass the issuer's
+ *  jurisdiction (free text from the application) to honor the
+ *  override map; falls back to the global default. */
+export function selectKybProvider(opts?: { jurisdiction?: string | null }): KybVerificationPort {
+  const j = opts?.jurisdiction?.trim().toLowerCase();
+  if (j && KYB_JURISDICTION_MAP[j]) {
+    const adapter = kybProviders[KYB_JURISDICTION_MAP[j]];
+    if (adapter) return adapter;
+  }
+  const fallback = kybProviders[KYB_DEFAULT_PROVIDER] ?? personaKybAdapter;
+  return fallback;
+}
+
+/** Look up a provider's adapter by name — used by webhook routes
+ *  which already know which provider they serve. */
+export function kybProviderByName(name: VerificationProvider): KybVerificationPort | null {
+  return kybProviders[name];
+}
+
+/** @deprecated Use selectKybProvider(). Kept for the existing start
+ *  route until it's migrated; resolves the global default. */
+export const kybVerificationAdapter = selectKybProvider();
 
 export type { IdentityPort } from "./ports/identity.port";
 export type { OrganizationPort } from "./ports/organization.port";

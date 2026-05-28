@@ -95,6 +95,8 @@ interface PersonaWebhookPayload {
 }
 
 class PersonaKybAdapter implements KybVerificationPort {
+  readonly provider = "persona" as const;
+
   async createCase(input: CreateCaseInput): Promise<CreateCaseResult> {
     const { apiKey, templateId } = getConfig();
 
@@ -133,6 +135,7 @@ class PersonaKybAdapter implements KybVerificationPort {
     const body = (await res.json()) as PersonaInquiryResponse;
     return {
       caseId: body.data.id,
+      provider: "persona",
       sessionToken: body.meta?.["session-token"] ?? "",
       status: mapPersonaStatus(body.data.attributes.status),
     };

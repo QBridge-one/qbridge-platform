@@ -17,9 +17,15 @@ import type {
   CreateCaseResult,
   KybCaseStatus,
   KybVerificationEvent,
+  VerificationProvider,
 } from "../core/kyb-verification";
 
 export interface KybVerificationPort {
+  /** Which provider this adapter talks to. Lets the start route
+   *  record the chosen provider on the case + the client pick the
+   *  matching widget (Persona modal vs Sumsub Web SDK). */
+  readonly provider: VerificationProvider;
+
   /** Create a new verification case (or resume an existing one). */
   createCase(input: CreateCaseInput): Promise<CreateCaseResult>;
 
