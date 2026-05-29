@@ -4,14 +4,14 @@ import { T, sectionBase, containerStyle, labelStyle, h2Style, dividerStyle, Grid
 
 const cases = [
   {
-    tag: "Private Equity",
-    title: "Tokenized Equity Offerings",
-    body: "Issue compliant tokenized equity under Reg D (US), Regulation Crowdfunding, or Canadian OM/AI exemptions. Automate investor eligibility, cap table management, and secondary transfer restrictions.",
+    tag: "Real Estate",
+    title: "Real Estate Tokenization",
+    body: "Fractional ownership of institutional real estate assets with embedded transfer restrictions, accredited investor verification, and jurisdiction-specific compliance configurations.",
   },
   {
-    tag: "Commodities",
-    title: "Gold & Commodity-Backed Tokens",
-    body: "Deploy proof-of-reserve backed commodity tokens with real-time attestation, transparent audit trails, and configurable redemption mechanics — for institutional commodity exposure on-chain.",
+    tag: "Private Equity & VC",
+    title: "Private Markets & Fund Interests",
+    body: "Tokenize private equity, venture, and fund (LP) interests to unlock secondary liquidity for traditionally illiquid assets — with automated cap tables, capital calls, distributions, and investor eligibility enforced on-chain.",
   },
   {
     tag: "Credit & Fixed Income",
@@ -19,9 +19,24 @@ const cases = [
     body: "Digitize private credit, structured notes, and fixed income instruments with programmable coupon payments, maturity logic, and reporting pipelines aligned to disclosure obligations.",
   },
   {
-    tag: "Real Estate",
-    title: "Real Estate Tokenization",
-    body: "Fractional ownership of institutional real estate assets with embedded transfer restrictions, accredited investor verification, and jurisdiction-specific compliance configurations.",
+    tag: "Commodities & Energy",
+    title: "Commodity & Energy-Backed Tokens",
+    body: "Tokenize energy and infrastructure projects, gold, and commodities as compliant security tokens — with proof-of-reserve attestation, transparent audit trails, and configurable redemption mechanics for institutional exposure on-chain.",
+  },
+  {
+    tag: "Stablecoins",
+    title: "Stablecoin Issuance",
+    body: "Launch fiat-pegged or reserve-backed stablecoins with proof-of-reserve attestation, programmable mint and burn controls, and jurisdiction-aware compliance built into the token layer.",
+  },
+  {
+    tag: "Banking & Treasury",
+    title: "Tokenized Deposits & Funds",
+    body: "Enable banks and financial institutions to issue tokenized deposits, money market funds, and treasury instruments — with on-chain settlement, programmable controls, and the audit and compliance rails regulators expect.",
+  },
+  {
+    tag: "Emerging Classes",
+    title: "Custom & Emerging Asset Classes",
+    body: "Carbon credits, infrastructure, intellectual property and royalties, trade finance, funds, and beyond. If it can be structured as a compliant instrument, QBridge gives you the rails to tokenize it.",
   },
 ];
 
