@@ -49,6 +49,7 @@ import { personaKybAdapter } from "./adapters/kyb-verification/persona.adapter";
 import { sumsubKybAdapter } from "./adapters/kyb-verification/sumsub.adapter";
 import type { KybVerificationPort } from "./ports/kyb-verification.port";
 import type { VerificationProvider } from "./core/kyb-verification";
+import { normalizeJurisdictionToCode } from "./data/countries";
 import { memoryNotificationAdapter } from "./adapters/notification/memory.adapter";
 import { drizzleNotificationAdapter } from "./adapters/notification/drizzle.adapter";
 import { consoleEmailAdapter } from "./adapters/email/console.adapter";
@@ -172,13 +173,22 @@ function parseJurisdictionMap(): Record<string, VerificationProvider> {
 }
 const KYB_JURISDICTION_MAP = parseJurisdictionMap();
 
-/** Pick the verification provider for a case. Pass the issuer's
- *  jurisdiction (free text from the application) to honor the
- *  override map; falls back to the global default. */
+/** Pick the verification provider for a case. The jurisdiction is
+ *  normalized to an ISO 3166-1 alpha-2 code first, then matched
+ *  against the override map; falls back to the global default.
+ *
+ *  Accepts ISO codes (`CA`), full names (`Canada`), and common
+ *  aliases (`USA`, `UK`) — so legacy free-text rows from before the
+ *  dropdown ships keep routing correctly without a backfill. */
 export function selectKybProvider(opts?: { jurisdiction?: string | null }): KybVerificationPort {
-  const j = opts?.jurisdiction?.trim().toLowerCase();
-  if (j && KYB_JURISDICTION_MAP[j]) {
-    const adapter = kybProviders[KYB_JURISDICTION_MAP[j]];
+  const raw = opts?.jurisdiction;
+  const code = normalizeJurisdictionToCode(raw)?.toLowerCase();
+  // Try the normalized code first, then a raw lowercased fallback so
+  // map entries written as ISO codes OR full names both work.
+  const rawKey = raw?.trim().toLowerCase();
+  const key = code ?? rawKey;
+  if (key && KYB_JURISDICTION_MAP[key]) {
+    const adapter = kybProviders[KYB_JURISDICTION_MAP[key]];
     if (adapter) return adapter;
   }
   const fallback = kybProviders[KYB_DEFAULT_PROVIDER] ?? personaKybAdapter;

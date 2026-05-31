@@ -20,6 +20,7 @@ import {
 import { errorResponse } from "@/lib/auth/api";
 import { requireOrg } from "@/lib/auth/server";
 import { forbidden } from "@/lib/core/errors";
+import { normalizeJurisdictionToCode } from "@/lib/data/countries";
 
 export async function POST() {
   try {
@@ -38,15 +39,21 @@ export async function POST() {
       });
     }
 
-    const jurisdiction = org.kybApplication?.jurisdiction ?? null;
-    const provider = selectKybProvider({ jurisdiction });
+    const rawJurisdiction = org.kybApplication?.jurisdiction ?? null;
+    // Provider routing uses the normalized ISO code so legacy free-
+    // text rows ("Canada", "USA") still match KYB_JURISDICTION_PROVIDERS
+    // entries written as ISO codes.
+    const provider = selectKybProvider({ jurisdiction: rawJurisdiction });
+    // KYB providers want ISO 3166-1 alpha-2; fall back to raw if we
+    // can't normalize (better to send something than nothing).
+    const isoCountry = normalizeJurisdictionToCode(rawJurisdiction) ?? rawJurisdiction ?? undefined;
 
     const result = await provider.createCase({
       type: "kyb",
       orgId: org.id,
       orgName: org.name ?? org.slug ?? org.id,
       contactEmail: session.user.email,
-      jurisdiction: jurisdiction ?? undefined,
+      jurisdiction: isoCountry ?? undefined,
     });
 
     await organizationAdapter.updateOrgMetadata(org.id, {

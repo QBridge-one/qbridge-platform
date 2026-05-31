@@ -6,6 +6,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/server";
 import { issuerWorkspaceKybBlocks } from "@/lib/core/issuer-kyb";
+import { jurisdictionDisplay } from "@/lib/data/countries";
 import { Button } from "@/components/ui/button";
 import { KybForm } from "./kyb-form";
 
@@ -52,7 +53,7 @@ export default async function IssuerKybPage() {
             </div>
             <div>
               <dt className="text-muted-foreground text-xs uppercase tracking-wide">Jurisdiction</dt>
-              <dd>{kybApplication.jurisdiction}</dd>
+              <dd>{jurisdictionDisplay(kybApplication.jurisdiction)}</dd>
             </div>
             <div>
               <dt className="text-muted-foreground text-xs uppercase tracking-wide">Submitted</dt>

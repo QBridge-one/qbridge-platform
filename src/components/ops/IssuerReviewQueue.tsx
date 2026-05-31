@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/table";
 import type { AppOrg } from "@/lib/core/identity.types";
 import type { IssuerKybStatus } from "@/lib/core/issuer-kyb";
+import { jurisdictionDisplay } from "@/lib/data/countries";
 import { IssuerRegistryOnChainSection } from "@/components/ops/IssuerRegistryOnChainSection";
 import type {
   IssuerRegistryRowStatus,
@@ -236,7 +237,9 @@ export function IssuerReviewQueue({
       ? initialOrgs.filter((o) => {
           const name = (o.name ?? "").toLowerCase();
           const legal = (o.kybApplication?.legalEntityName ?? "").toLowerCase();
-          const juris = (o.kybApplication?.jurisdiction ?? "").toLowerCase();
+          // Search matches both the ISO code and the country name so
+          // "ca" or "canada" both surface the same row.
+          const juris = `${o.kybApplication?.jurisdiction ?? ""} ${jurisdictionDisplay(o.kybApplication?.jurisdiction)}`.toLowerCase();
           return name.includes(q) || legal.includes(q) || juris.includes(q);
         })
       : initialOrgs;
@@ -378,8 +381,10 @@ function compareBy(a: AppOrg, b: AppOrg, key: SortKey): number {
         b.kybApplication?.legalEntityName ?? "",
       );
     case "jurisdiction":
-      return (a.kybApplication?.jurisdiction ?? "").localeCompare(
-        b.kybApplication?.jurisdiction ?? "",
+      // Sort by the display name so the alphabetical order matches
+      // what the reviewer sees in the column, not the raw ISO code.
+      return jurisdictionDisplay(a.kybApplication?.jurisdiction).localeCompare(
+        jurisdictionDisplay(b.kybApplication?.jurisdiction),
       );
     case "submittedAt": {
       const ta = a.kybApplication?.submittedAt
@@ -456,7 +461,7 @@ function IssuerTableRow({
         {org.kybApplication?.legalEntityName ?? "—"}
       </TableCell>
       <TableCell className="text-muted-foreground">
-        {org.kybApplication?.jurisdiction ?? "—"}
+        {jurisdictionDisplay(org.kybApplication?.jurisdiction)}
       </TableCell>
       <TableCell className="text-muted-foreground text-xs">{submitted}</TableCell>
       <TableCell>
@@ -608,7 +613,7 @@ function ReviewBody({
           </h3>
           <dl className="space-y-2 rounded-md border bg-muted/30 p-3">
             <Row label="Legal entity" value={application?.legalEntityName ?? "—"} />
-            <Row label="Jurisdiction" value={application?.jurisdiction ?? "—"} />
+            <Row label="Jurisdiction" value={jurisdictionDisplay(application?.jurisdiction)} />
             <Row
               label="Website"
               value={

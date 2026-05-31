@@ -8,6 +8,7 @@ import type { IssuerKybStatus } from "@/lib/core/issuer-kyb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CountrySelect } from "@/components/ui/country-select";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -81,12 +82,12 @@ export function KybForm({ orgName, initialStatus }: Props) {
         </div>
         <div className="space-y-2">
           <Label htmlFor="jurisdiction">Primary jurisdiction</Label>
-          <Input
+          <CountrySelect
             id="jurisdiction"
             required
             value={jurisdiction}
-            onChange={(e) => setJurisdiction(e.target.value)}
-            placeholder="e.g. Cayman Islands / Canada / UAE"
+            onChange={setJurisdiction}
+            placeholder="Select country of incorporation…"
           />
         </div>
         <div className="space-y-2">

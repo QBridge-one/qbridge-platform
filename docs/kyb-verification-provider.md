@@ -5,7 +5,7 @@ Step 2 of issuer onboarding — identity verification for the legal entity, bene
 **Both Persona and Sumsub are wired** behind the same port. The platform picks one per case via `selectKybProvider({ jurisdiction })`:
 
 - **Global default**: `KYB_PROVIDER` (`persona` | `sumsub`, default `persona`)
-- **Per-jurisdiction override**: `KYB_JURISDICTION_PROVIDERS` (e.g. `canada:sumsub`) — matched against the issuer's application jurisdiction. Use this to route Canadian KYB to Sumsub (which supports it) while everyone else uses Persona.
+- **Per-jurisdiction override**: `KYB_JURISDICTION_PROVIDERS` — keys are ISO 3166-1 alpha-2 codes (e.g. `ca:sumsub,us:persona`). The issuer's jurisdiction is normalized to an ISO code (the application form is now a country dropdown that stores codes directly; legacy free-text values like `Canada` or `USA` are normalized at lookup so both forms work). Use this to route Canadian KYB to Sumsub while everyone else stays on Persona.
 
 The chosen provider is stored on `AppOrg.kybCase.provider`, so status updates from each provider's webhook route correctly. The client widget ([KybVerificationWidget.tsx](../src/components/workspace/KybVerificationWidget.tsx)) renders the matching UI — Persona's imperative modal or Sumsub's inline `SumsubWebSdk` component — based on the `provider` returned by the start endpoint.
 
