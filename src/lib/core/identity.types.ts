@@ -12,6 +12,7 @@ import type {
   IssuerKybStatus,
 } from "./issuer-kyb";
 import type { KybCase } from "./kyb-verification";
+import type { ChainRegistration } from "./chain-registration";
 
 // ─── Plane ───────────────────────────────────────────────────
 // Two distinct planes of access in QBridge.
@@ -109,6 +110,10 @@ export interface AppOrg {
   /** Third-party KYB verification case (Persona / Sumsub). Null until
    *  the issuer starts the verification flow in step 2. */
   kybCase: KybCase | null;
+  /** On-chain IssuerRegistry registration snapshot. Null until ops
+   *  has committed verifyIssuer/registerIssuer on the contract. Step 2
+   *  is fully complete only when this is non-null + status="registered". */
+  chainRegistration: ChainRegistration | null;
   createdAt: string;
 }
 
@@ -223,6 +228,7 @@ export type AuditAction =
   | "kyb.submitted"
   | "kyb.approved"
   | "kyb.rejected"
+  | "kyb.chain_verified"
   | "ops.action";
 
 export interface AuditEntry {

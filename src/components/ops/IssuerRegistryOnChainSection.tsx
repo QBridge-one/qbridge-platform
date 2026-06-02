@@ -261,6 +261,7 @@ export function IssuerRegistryOnChainSection({
 
       {issuerWallet && registryAddress ? (
         <IssuerRegistryChainActions
+          orgId={orgId}
           issuerWallet={issuerWallet}
           registryAddress={registryAddress}
           registerPayload={context?.registerIssuer ?? null}
@@ -276,12 +277,14 @@ export function IssuerRegistryOnChainSection({
 }
 
 function IssuerRegistryChainActions({
+  orgId,
   issuerWallet,
   registryAddress,
   registerPayload,
   wrongChain,
   onRegistered,
 }: {
+  orgId: string;
   issuerWallet: Address;
   registryAddress: Address;
   registerPayload: RegisterIssuerPayload | null;
@@ -323,6 +326,38 @@ function IssuerRegistryChainActions({
         const txHash = hash as Hex;
         setConfirmedTxHash(txHash);
         notifyTxSuccess("KYB verified on-chain", EXPECTED_CHAIN_ID, txHash);
+
+        // Notify the server so it can cache the chainRegistration
+        // snapshot in Clerk metadata + fire workspace_active to the
+        // issuer admins. Failure here doesn't undo the on-chain tx —
+        // just surfaces an error the reviewer can retry.
+        try {
+          const res = await fetch(
+            `/api/ops/issuers/${encodeURIComponent(orgId)}/registry/confirm`,
+            {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ txHash, chainId: EXPECTED_CHAIN_ID }),
+            },
+          );
+          if (!res.ok) {
+            const data = (await res.json().catch(() => ({}))) as {
+              error?: string;
+            };
+            setLocalError(
+              data.error
+                ? `On-chain tx succeeded but recording it failed: ${data.error}`
+                : "On-chain tx succeeded but the server failed to record it.",
+            );
+          }
+        } catch (e) {
+          setLocalError(
+            e instanceof Error
+              ? `On-chain tx succeeded but recording it failed: ${e.message}`
+              : "On-chain tx succeeded but the server failed to record it.",
+          );
+        }
+
         await Promise.all([refetchApproved(), refetchIssuer()]);
         onRegistered();
       }

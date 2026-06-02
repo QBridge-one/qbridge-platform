@@ -139,11 +139,17 @@ function stepGatingByApplication(org: AppOrg, defaultState: StepState): StepStat
 }
 
 function kybVerificationStep(org: AppOrg): Step {
+  // Step 2 has two sub-gates that BOTH must complete:
+  //   A. Identity verification (Sumsub / Persona — automated)
+  //   B. On-chain registration (ops calls IssuerRegistry.verifyIssuer)
+  // The step is only fully green when both are done. Until then we
+  // surface honest sub-progress so the issuer knows what's pending
+  // and where the wait is.
   const base = {
     number: 2,
     title: "Identity verification",
     description:
-      "Beneficial owners, sanctions screening, and document verification. Processed by our compliance partner. Required before launching your first offering.",
+      "Beneficial owners, sanctions screening, and document verification. Processed by our compliance partner and then committed to IssuerRegistry on-chain. Required before launching your first offering.",
   } as const;
   if (org.kybStatus !== "approved") {
     return {
@@ -152,6 +158,35 @@ function kybVerificationStep(org: AppOrg): Step {
     };
   }
   const kybCase = org.kybCase;
+  const chain = org.chainRegistration;
+  const identityDone = kybCase?.status === "approved";
+  const chainDone = chain?.status === "registered";
+
+  // ── Both done → fully green ──
+  if (identityDone && chainDone) {
+    return {
+      ...base,
+      state: {
+        kind: "done",
+        subtitle: `Registered on ${new Date(chain!.registeredAt).toLocaleDateString()}`,
+      },
+    };
+  }
+
+  // ── Identity done, awaiting on-chain registration ──
+  if (identityDone && !chainDone) {
+    return {
+      ...base,
+      state: {
+        kind: "in_progress",
+        subtitle:
+          "Documents verified ✓ — QBridge ops is finalizing on-chain registration",
+      },
+      customContent: <SubStatusList identityDone chainDone={chainDone} />,
+    };
+  }
+
+  // ── Identity not yet done — show the widget ──
   if (!kybCase) {
     return {
       ...base,
@@ -160,21 +195,14 @@ function kybVerificationStep(org: AppOrg): Step {
     };
   }
   switch (kybCase.status) {
-    case "approved":
-      return {
-        ...base,
-        state: {
-          kind: "done",
-          subtitle: `Verified on ${new Date(kybCase.updatedAt).toLocaleDateString()}`,
-        },
-      };
     case "declined":
     case "failed":
       return {
         ...base,
         state: {
           kind: "action_required",
-          subtitle: "Verification was not successful — retry with updated documents",
+          subtitle:
+            "Verification was not successful — retry with updated documents",
         },
         customContent: <KybVerificationWidget orgId={org.id} existingCase={kybCase} />,
       };
@@ -189,13 +217,53 @@ function kybVerificationStep(org: AppOrg): Step {
         ...base,
         state: {
           kind: "in_progress",
-          subtitle: kybCase.status === "needs_review"
-            ? "Under manual review by our compliance partner"
-            : "Verification in progress",
+          subtitle:
+            kybCase.status === "needs_review"
+              ? "Under manual review by our compliance partner"
+              : "Documents submitted — awaiting compliance partner review",
         },
         customContent: <KybVerificationWidget orgId={org.id} existingCase={kybCase} />,
       };
   }
+}
+
+/** Compact two-line sub-status checklist for step 2. Shown when the
+ *  user is past one sub-gate and waiting on the next. */
+function SubStatusList({
+  identityDone,
+  chainDone,
+}: {
+  identityDone: boolean;
+  chainDone: boolean;
+}) {
+  return (
+    <ul className="space-y-1.5 rounded-md border bg-muted/30 p-3 text-sm">
+      <li className="flex items-center gap-2">
+        {identityDone ? (
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+        ) : (
+          <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+        )}
+        <span>
+          {identityDone
+            ? "Documents verified by compliance partner"
+            : "Awaiting compliance partner review"}
+        </span>
+      </li>
+      <li className="flex items-center gap-2">
+        {chainDone ? (
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+        ) : (
+          <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+        )}
+        <span>
+          {chainDone
+            ? "Registered on QBridge IssuerRegistry"
+            : "Awaiting QBridge on-chain registration"}
+        </span>
+      </li>
+    </ul>
+  );
 }
 
 function StepCard({ step, isLast }: { step: Step; isLast: boolean }) {

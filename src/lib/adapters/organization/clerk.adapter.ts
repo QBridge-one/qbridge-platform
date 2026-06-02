@@ -36,6 +36,7 @@ import {
 } from "../../core/errors";
 import { kybFieldsFromOrganizationPublicMeta } from "../clerk/issuer-metadata";
 import { kybCaseFromMetadata } from "../../core/kyb-verification";
+import { chainRegistrationFromMetadata } from "../../core/chain-registration";
 import {
   mapRoleFromClerk,
   mapRoleToClerk,
@@ -114,6 +115,7 @@ function mapOrg(o: ClerkOrg): AppOrg {
     kybApplication: kyb.kybApplication,
     kybReview: kyb.kybReview,
     kybCase: kybCaseFromMetadata(o.publicMetadata),
+    chainRegistration: chainRegistrationFromMetadata(o.publicMetadata),
     createdAt: new Date(o.createdAt).toISOString(),
   };
 }

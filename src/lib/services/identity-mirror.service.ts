@@ -232,7 +232,10 @@ async function maybeNotifyKybTransition(o: OrgPayload): Promise<void> {
     const review = issuerKybReviewFromMetadata(meta);
     if (!review) return;
     await dispatchNotification(deps, {
-      kind: kybStatus === "approved" ? "issuer.kyb_approved" : "issuer.kyb_rejected",
+      kind:
+        kybStatus === "approved"
+          ? "issuer.application_approved"
+          : "issuer.application_rejected",
       orgId: o.id,
       payload:
         kybStatus === "approved"
@@ -256,7 +259,10 @@ async function maybeNotifyKybTransition(o: OrgPayload): Promise<void> {
           roles: ["issuer_admin"],
         },
       ],
-      dedupeKey: `${o.id}:${kybStatus}:${review.decidedAt}`,
+      // Match the dedupeKey shape decideIssuerKyb uses so this
+      // backup path collapses with the in-app emit on the same
+      // decision (no duplicate notifications).
+      dedupeKey: `${o.id}:application_${kybStatus}:${review.decidedAt}`,
     });
   }
 }

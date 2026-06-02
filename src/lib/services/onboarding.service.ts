@@ -151,7 +151,7 @@ export async function decideIssuerKyb(
 
   const decidedAt = updated.kybReview?.decidedAt ?? new Date().toISOString();
   await dispatchNotification(deps, {
-    kind: decision === "approved" ? "issuer.kyb_approved" : "issuer.kyb_rejected",
+    kind: decision === "approved" ? "issuer.application_approved" : "issuer.application_rejected",
     orgId: target.id,
     payload:
       decision === "approved"
@@ -177,6 +177,6 @@ export async function decideIssuerKyb(
     ],
     // The (orgId, decidedAt) pair is stable across the UI emit + the
     // Clerk webhook backup re-emit, so they collapse into one fanout.
-    dedupeKey: `${target.id}:${decision}:${decidedAt}`,
+    dedupeKey: `${target.id}:application_${decision}:${decidedAt}`,
   });
 }

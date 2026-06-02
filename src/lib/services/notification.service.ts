@@ -92,6 +92,104 @@ const renderers: { [K in NotificationKind]: Renderer<K> } = {
       text: `${title}\n\n${body}\n\nReview: ${actionUrl}`,
     };
   },
+  // ── Step 1 — application gate ──
+  "issuer.application_approved": (p) => {
+    const title = `Application approved for ${p.issuerOrgName}`;
+    const body = `Your issuer application has been approved. Next step: complete identity verification (KYB) to activate your workspace.`;
+    const actionUrl = `/workspace/onboarding`;
+    return {
+      title,
+      body,
+      actionUrl,
+      subject: title,
+      html: `
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(body)}</p>
+        <p><a href="${escapeAttr(actionUrl)}">Start identity verification</a></p>
+      `,
+      text: `${title}\n\n${body}\n\nNext step: ${actionUrl}`,
+    };
+  },
+  "issuer.application_rejected": (p) => {
+    const title = `Application needs changes — ${p.issuerOrgName}`;
+    const reasonLine = p.reason
+      ? `Reason: ${p.reason}`
+      : `Please contact QBridge support for details.`;
+    const body = `Your issuer application was not approved. ${reasonLine}`;
+    const actionUrl = `/onboarding/kyb`;
+    return {
+      title,
+      body,
+      actionUrl,
+      subject: title,
+      html: `
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(`Your issuer application was not approved.`)}</p>
+        <p>${escapeHtml(reasonLine)}</p>
+        <p><a href="${escapeAttr(actionUrl)}">Update and resubmit</a></p>
+      `,
+      text: `${title}\n\nYour issuer application was not approved.\n${reasonLine}\n\nResubmit: ${actionUrl}`,
+    };
+  },
+  // ── Step 2A — identity verification gate ──
+  "issuer.kyb_verified": (p) => {
+    const title = `Ready for on-chain registration: ${p.issuerOrgName}`;
+    const body = `${p.issuerOrgName} passed identity verification with ${p.provider}. Open the review drawer and register the issuer on IssuerRegistry to unlock their workspace.`;
+    const actionUrl = `/ops/admin/issuers?focus=${encodeURIComponent(p.issuerOrgId)}`;
+    return {
+      title,
+      body,
+      actionUrl,
+      subject: title,
+      html: `
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(body)}</p>
+        <p><a href="${escapeAttr(actionUrl)}">Open in QBridge ops</a></p>
+      `,
+      text: `${title}\n\n${body}\n\nRegister on-chain: ${actionUrl}`,
+    };
+  },
+  "issuer.kyb_failed": (p) => {
+    const title = `Identity verification didn't pass — ${p.issuerOrgName}`;
+    const reasonLine = p.reason
+      ? `Reason: ${p.reason}`
+      : `Please contact QBridge support if you think this is in error.`;
+    const body = `Our compliance partner could not verify your identity documents. ${reasonLine}`;
+    const actionUrl = `/workspace/onboarding`;
+    return {
+      title,
+      body,
+      actionUrl,
+      subject: title,
+      html: `
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(body)}</p>
+        <p><a href="${escapeAttr(actionUrl)}">Retry verification</a></p>
+      `,
+      text: `${title}\n\n${body}\n\nRetry: ${actionUrl}`,
+    };
+  },
+  // ── Step 2B — on-chain gate ──
+  "issuer.workspace_active": (p) => {
+    const title = `Workspace fully active — ${p.issuerOrgName}`;
+    const body = `Your issuer workspace has been registered on QBridge IssuerRegistry. You can now create assets and deploy tokens.`;
+    const actionUrl = `/workspace`;
+    return {
+      title,
+      body,
+      actionUrl,
+      subject: title,
+      html: `
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(body)}</p>
+        <p><a href="${escapeAttr(actionUrl)}">Open workspace</a></p>
+      `,
+      text: `${title}\n\n${body}\n\nWorkspace: ${actionUrl}`,
+    };
+  },
+  // ── Legacy renderers — DB rows from before the kind split still
+  //    show up in the bell. Same copy as before so existing rows are
+  //    unchanged; nothing fires these going forward.
   "issuer.kyb_approved": (p) => {
     const title = `Application approved for ${p.issuerOrgName}`;
     const body = `Your issuer application has been approved. Your workspace is now active.`;

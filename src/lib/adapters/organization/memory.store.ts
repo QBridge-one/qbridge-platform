@@ -61,6 +61,7 @@ class MemoryOrganizationStore {
       kybApplication: null,
       kybReview: null,
       kybCase: null,
+      chainRegistration: null,
       createdAt: new Date().toISOString(),
     };
     this.orgs.set(id, org);
@@ -214,6 +215,7 @@ class MemoryOrganizationStore {
       },
       kybReview: null,
       kybCase: null,
+      chainRegistration: null,
     };
     this.orgs.set(orgId, next);
     return next;

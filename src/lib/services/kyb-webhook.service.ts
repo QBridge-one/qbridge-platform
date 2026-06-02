@@ -14,6 +14,7 @@ import {
   auditLogAdapter,
   emailAdapter,
   notificationAdapter,
+  OPS_ORG_ID,
   organizationAdapter,
 } from "../container.server";
 import type {
@@ -95,35 +96,59 @@ export async function processKybEvent(
     },
   });
 
-  if (event.status === "approved" || event.status === "declined") {
-    await dispatchNotification(
-      {
-        notification: notificationAdapter,
-        organization: organizationAdapter,
-        email: emailAdapter,
-      },
-      {
-        kind: event.status === "approved" ? "issuer.kyb_approved" : "issuer.kyb_rejected",
+  const orgName = org.name ?? org.slug ?? org.id;
+  const occurredAt = new Date().toISOString();
+  const deps = {
+    notification: notificationAdapter,
+    organization: organizationAdapter,
+    email: emailAdapter,
+  };
+
+  if (event.status === "approved") {
+    // Identity verified by Sumsub/Persona — page OPS to do the
+    // on-chain registration. The issuer is NOT told "workspace
+    // active" yet; that's the on-chain step, fired separately
+    // from /api/ops/issuers/[orgId]/registry/confirm.
+    if (OPS_ORG_ID) {
+      await dispatchNotification(deps, {
+        kind: "issuer.kyb_verified",
         orgId: org.id,
-        payload:
-          event.status === "approved"
-            ? {
-                issuerOrgId: org.id,
-                issuerOrgName: org.name ?? org.slug ?? org.id,
-                decidedByUserId: provider,
-                decidedAt: new Date().toISOString(),
-              }
-            : {
-                issuerOrgId: org.id,
-                issuerOrgName: org.name ?? org.slug ?? org.id,
-                decidedByUserId: provider,
-                decidedAt: new Date().toISOString(),
-                reason: "Verification declined by our compliance partner.",
-              },
-        recipients: [{ orgId: org.id, plane: "issuer", roles: ["issuer_admin"] }],
-        dedupeKey: `${org.id}:${provider}:${event.status}:${event.caseId}`,
+        payload: {
+          issuerOrgId: org.id,
+          issuerOrgName: orgName,
+          provider,
+          caseId: event.caseId,
+          verifiedAt: occurredAt,
+        },
+        recipients: [
+          {
+            orgId: OPS_ORG_ID,
+            plane: "ops",
+            roles: ["ops_admin", "ops_onboarding", "ops_engineer"],
+          },
+        ],
+        dedupeKey: `${org.id}:${provider}:verified:${event.caseId}`,
+      });
+    }
+  } else if (event.status === "declined" || event.status === "failed") {
+    // Identity check failed — tell the issuer admin.
+    await dispatchNotification(deps, {
+      kind: "issuer.kyb_failed",
+      orgId: org.id,
+      payload: {
+        issuerOrgId: org.id,
+        issuerOrgName: orgName,
+        provider,
+        caseId: event.caseId,
+        failedAt: occurredAt,
+        reason:
+          event.status === "declined"
+            ? "Verification declined by our compliance partner."
+            : "Identity verification could not complete.",
       },
-    );
+      recipients: [{ orgId: org.id, plane: "issuer", roles: ["issuer_admin"] }],
+      dedupeKey: `${org.id}:${provider}:${event.status}:${event.caseId}`,
+    });
   }
 
   return { ok: true, status: event.status };

@@ -23,8 +23,25 @@ import type { AppRole, OrgKind } from "./identity.types";
 // ─── Kinds ─────────────────────────────────────────────────
 // Naming: "<subject>.<event>". Stays stable across releases; the
 // notification renderer in the service maps kind → title/body.
+//
+// The issuer onboarding journey produces three distinct gate events:
+//   1. Application gate (ops decides on the form)
+//        application_approved | application_rejected → issuer admin
+//   2. Identity-verification gate (Sumsub/Persona webhook)
+//        kyb_verified  → OPS (signal to do on-chain registration)
+//        kyb_failed    → issuer admin
+//   3. On-chain gate (ops calls verifyIssuer on IssuerRegistry)
+//        workspace_active → issuer admin (fully unlocked, can tokenize)
+//
+// The legacy `kyb_approved`/`kyb_rejected` kinds are kept so old
+// notifications in the DB still render; new events use the split kinds.
 export type NotificationKind =
   | "issuer.kyb_submitted"
+  | "issuer.application_approved"
+  | "issuer.application_rejected"
+  | "issuer.kyb_verified"
+  | "issuer.kyb_failed"
+  | "issuer.workspace_active"
   | "issuer.kyb_approved"
   | "issuer.kyb_rejected";
 
@@ -41,6 +58,50 @@ export interface NotificationPayloads {
     submittedByUserId: string;
     submittedAt: string;
   };
+  // ── Step 1 — application gate (ops decides on the form) ──
+  "issuer.application_approved": {
+    issuerOrgId: string;
+    issuerOrgName: string;
+    decidedByUserId: string;
+    decidedAt: string;
+  };
+  "issuer.application_rejected": {
+    issuerOrgId: string;
+    issuerOrgName: string;
+    decidedByUserId: string;
+    decidedAt: string;
+    reason: string | null;
+  };
+  // ── Step 2A — identity verification gate (Sumsub / Persona webhook) ──
+  /** Sumsub GREEN — fires to OPS, prompts on-chain registration. */
+  "issuer.kyb_verified": {
+    issuerOrgId: string;
+    issuerOrgName: string;
+    provider: "persona" | "sumsub" | "manual";
+    caseId: string;
+    verifiedAt: string;
+  };
+  /** Sumsub RED — fires to the issuer admin, prompt to retry. */
+  "issuer.kyb_failed": {
+    issuerOrgId: string;
+    issuerOrgName: string;
+    provider: "persona" | "sumsub" | "manual";
+    caseId: string;
+    failedAt: string;
+    reason: string | null;
+  };
+  // ── Step 2B — on-chain gate (ops calls IssuerRegistry.verifyIssuer) ──
+  /** Final unlock — fires to the issuer admin after the on-chain tx
+   *  confirms. From this point the issuer can deploy tokens. */
+  "issuer.workspace_active": {
+    issuerOrgId: string;
+    issuerOrgName: string;
+    registeredByUserId: string;
+    registeredAt: string;
+    txHash: string;
+    chainId: number;
+  };
+  // ── Legacy (preserved so old DB rows still render) ──
   "issuer.kyb_approved": {
     issuerOrgId: string;
     issuerOrgName: string;
@@ -79,6 +140,11 @@ type NotificationOf<K extends NotificationKind> = {
 
 export type Notification =
   | NotificationOf<"issuer.kyb_submitted">
+  | NotificationOf<"issuer.application_approved">
+  | NotificationOf<"issuer.application_rejected">
+  | NotificationOf<"issuer.kyb_verified">
+  | NotificationOf<"issuer.kyb_failed">
+  | NotificationOf<"issuer.workspace_active">
   | NotificationOf<"issuer.kyb_approved">
   | NotificationOf<"issuer.kyb_rejected">;
 

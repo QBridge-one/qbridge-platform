@@ -116,6 +116,10 @@ class MemoryOrganizationAdapter implements OrganizationPort {
     const updated: AppOrg = {
       ...org,
       kybCase: partial.kybCase != null ? partial.kybCase as AppOrg["kybCase"] : org.kybCase,
+      chainRegistration:
+        partial.chainRegistration != null
+          ? (partial.chainRegistration as AppOrg["chainRegistration"])
+          : org.chainRegistration,
     };
     return updated;
   }
