@@ -6,8 +6,21 @@
 //   SUMSUB_APP_TOKEN      — app token (sbx:… or prd:…)
 //   SUMSUB_SECRET_KEY     — secret key for request signing
 //   SUMSUB_WEBHOOK_SECRET — webhook signature secret
-//   SUMSUB_KYB_LEVEL      — level name configured as a company/KYB flow
 //   SUMSUB_KYC_LEVEL      — level name for individual/KYC flow (future)
+//
+// KYB level resolution — TWO supported patterns:
+//
+//   A. Single level (simple, swap value to change):
+//      SUMSUB_KYB_LEVEL=full-kyb-level
+//
+//   B. Tiered (both configured, flip a switch):
+//      SUMSUB_KYB_LEVEL_BASIC=basic-kyb-level
+//      SUMSUB_KYB_LEVEL_FULL=full-kyb-level
+//      SUMSUB_KYB_LEVEL_TIER=full     # which one is active right now
+//
+// Pattern A takes precedence (legacy). When unset, falls back to
+// pattern B keyed by `tier` — defaults to "full" if unspecified.
+// Future per-case override can pass tier directly via CreateCaseInput.
 //
 // Request signing (every API call):
 //   X-App-Token, X-App-Access-Ts, X-App-Access-Sig
@@ -35,11 +48,27 @@ import { providerNotInitialized, webhookSignatureInvalid } from "../../core/erro
 const SUMSUB_API = "https://api.sumsub.com";
 const TOKEN_TTL_SECS = 600;
 
+type KybTier = "basic" | "full";
+
+function resolveKybLevel(tier: KybTier): string {
+  // Pattern A: single SUMSUB_KYB_LEVEL wins outright. Lets long-time
+  // configs keep working without renaming env vars.
+  const single = process.env.SUMSUB_KYB_LEVEL?.trim();
+  if (single) return single;
+  // Pattern B: tiered. Resolve from the matching SUMSUB_KYB_LEVEL_{TIER}.
+  if (tier === "basic") return process.env.SUMSUB_KYB_LEVEL_BASIC?.trim() ?? "";
+  return process.env.SUMSUB_KYB_LEVEL_FULL?.trim() ?? "";
+}
+
+function getActiveTier(): KybTier {
+  const raw = process.env.SUMSUB_KYB_LEVEL_TIER?.trim().toLowerCase();
+  return raw === "basic" ? "basic" : "full";
+}
+
 function getConfig() {
   const appToken = process.env.SUMSUB_APP_TOKEN?.trim();
   const secretKey = process.env.SUMSUB_SECRET_KEY?.trim();
   const webhookSecret = process.env.SUMSUB_WEBHOOK_SECRET?.trim();
-  const kybLevel = process.env.SUMSUB_KYB_LEVEL?.trim();
   const kycLevel = process.env.SUMSUB_KYC_LEVEL?.trim();
   if (!appToken) throw providerNotInitialized("Sumsub (missing SUMSUB_APP_TOKEN)");
   if (!secretKey) throw providerNotInitialized("Sumsub (missing SUMSUB_SECRET_KEY)");
@@ -47,7 +76,11 @@ function getConfig() {
     appToken,
     secretKey,
     webhookSecret: webhookSecret ?? "",
-    kybLevel: kybLevel ?? "",
+    /** Active default level — picked from env via the A/B resolver.
+     *  `createCase` calls resolveKybLevel(tier) directly when a
+     *  per-case tier override arrives, so this is the boot-time default
+     *  used when CreateCaseInput doesn't specify one. */
+    kybLevel: resolveKybLevel(getActiveTier()),
     kycLevel: kycLevel ?? "",
   };
 }
@@ -133,9 +166,11 @@ class SumsubKybAdapter implements KybVerificationPort {
     const type = input.type ?? "kyb";
     const levelName = type === "kyc" ? kycLevel : kybLevel;
     if (!levelName) {
-      throw providerNotInitialized(
-        `Sumsub (missing ${type === "kyc" ? "SUMSUB_KYC_LEVEL" : "SUMSUB_KYB_LEVEL"})`,
-      );
+      const hint =
+        type === "kyc"
+          ? "SUMSUB_KYC_LEVEL"
+          : "SUMSUB_KYB_LEVEL (or SUMSUB_KYB_LEVEL_BASIC / SUMSUB_KYB_LEVEL_FULL + SUMSUB_KYB_LEVEL_TIER)";
+      throw providerNotInitialized(`Sumsub (missing ${hint})`);
     }
 
     // externalUserId is our stable subject id (org id for KYB). Sumsub

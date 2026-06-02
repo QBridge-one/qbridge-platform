@@ -144,6 +144,24 @@ The `KybVerificationPort` is the interface that decouples the platform from any 
 | Webhook auth | `x-payload-digest` HMAC | `Persona-Signature` HMAC |
 | Dashboard | https://cockpit.sumsub.com | https://app.withpersona.com |
 
+### Sumsub KYB level — single vs tiered
+
+The Sumsub adapter resolves the active KYB level from one of two env patterns. Pattern A wins if both are set.
+
+**A. Single level (simplest):**
+```bash
+SUMSUB_KYB_LEVEL=full-kyb-level
+```
+Swap the value to switch the depth of KYB everyone runs.
+
+**B. Tiered (both configured, flip a switch):**
+```bash
+SUMSUB_KYB_LEVEL_BASIC=basic-kyb-level
+SUMSUB_KYB_LEVEL_FULL=full-kyb-level
+SUMSUB_KYB_LEVEL_TIER=full      # active default: "basic" | "full"
+```
+Both level names sit in env; flipping `SUMSUB_KYB_LEVEL_TIER` swaps the active one. Sets you up for per-case picking later — when ops gets a UI dropdown to choose the tier per issuer, the request payload carries the `tier`, the adapter resolves it against the same env, no level-name editing needed.
+
 ---
 
 ## 3. Where the code lives
