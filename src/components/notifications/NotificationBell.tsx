@@ -9,6 +9,14 @@
 //
 // Bridges to existing dropdown primitives so the header chrome
 // stays consistent with WalletStatus + IdentityControls.
+//
+// Also: bell-driven page refresh. Each poll diffs incoming items
+// against the IDs we've already shown; when a new notification
+// arrives between ticks, we call router.refresh() so whatever
+// page the user is on re-fetches its server data without needing
+// a manual reload. Every notification kind is a signal that some
+// piece of platform state changed — using the bell's existing
+// poll cadence avoids adding a second polling stream per page.
 // ============================================================
 
 import { Bell, CheckCheck } from "lucide-react";
@@ -37,6 +45,12 @@ export function NotificationBell() {
   const [items, setItems] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const aborter = useRef<AbortController | null>(null);
+  // Notification IDs we've already observed. New IDs between polls
+  // mean fresh server-side state — trigger router.refresh().
+  const seenIdsRef = useRef<Set<string>>(new Set());
+  // Skip the very first poll's "everything is new" pass; the page
+  // we just mounted on already reflects what's in the DB.
+  const firstLoadRef = useRef(true);
 
   const load = useCallback(async () => {
     aborter.current?.abort();
@@ -52,12 +66,25 @@ export function NotificationBell() {
       const data = (await r.json()) as FeedResponse;
       setItems(data.notifications);
       setUnread(data.unread);
+
+      // Diff against the IDs we've shown before. If anything is new
+      // (and this isn't the initial mount), the underlying server
+      // state changed — refresh the current page so its SSR data
+      // catches up. Same poll, no extra request stream.
+      const incomingIds = data.notifications.map((n) => n.id);
+      const hasNew = incomingIds.some((id) => !seenIdsRef.current.has(id));
+      incomingIds.forEach((id) => seenIdsRef.current.add(id));
+
+      if (!firstLoadRef.current && hasNew) {
+        router.refresh();
+      }
+      firstLoadRef.current = false;
     } catch {
       // Silent: don't surface poll failures in the header.
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
   // Initial load + interval poll + refresh on tab focus.
   useEffect(() => {
