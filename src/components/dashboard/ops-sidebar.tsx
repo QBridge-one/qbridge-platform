@@ -95,11 +95,9 @@ const NAV_ITEMS: NavItem[] = [
     requires: "ops:issuers:approve",
   },
   {
-    label: "Risk flags",
+    label: "Platform settings",
     href: `${BASE}/admin/flags`,
     icon: AlertTriangle,
-    badge: 7,
-    badgeVariant: "destructive",
     section: "admin",
     requires: "ops:flags:edit",
   },
