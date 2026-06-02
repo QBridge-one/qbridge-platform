@@ -162,8 +162,13 @@ class SumsubKybAdapter implements KybVerificationPort {
   readonly provider = "sumsub" as const;
 
   async createCase(input: CreateCaseInput): Promise<CreateCaseResult> {
-    const { kybLevel, kycLevel } = getConfig();
+    const { kybLevel: defaultKybLevel, kycLevel } = getConfig();
     const type = input.type ?? "kyb";
+    // Per-case tier override (from DB platform-settings or future UI)
+    // wins over the env default. Falls back to env when unset.
+    const kybLevel = input.tier
+      ? resolveKybLevel(input.tier)
+      : defaultKybLevel;
     const levelName = type === "kyc" ? kycLevel : kybLevel;
     if (!levelName) {
       const hint =

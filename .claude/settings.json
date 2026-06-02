@@ -5,7 +5,9 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(yarn build *)",
-      "Bash(yarn add *)"
+      "Bash(yarn add *)",
+      "Bash(yarn db:generate)",
+      "Bash(yarn db:migrate)"
     ]
   }
 }

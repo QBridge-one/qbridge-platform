@@ -263,6 +263,24 @@ export const notificationOutbox = pgTable(
   ],
 );
 
+// ─── Platform settings (key/value, ops-toggleable) ─────────────
+// Single source of truth for runtime-toggleable platform config
+// (KYB tier default, feature flags, etc.) that we want ops to flip
+// from the dashboard without redeploying. Reads go through the
+// PlatformSettingsPort; writes are gated by ops:flags:edit.
+
+export const platformSettings = pgTable("platform_settings", {
+  /** Dotted key, e.g. "kyb.tier". Validated against the typed
+   *  PlatformSettingKey union in core/platform-settings.ts. */
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  /** Clerk user id of the ops admin who last set the value. */
+  updatedBy: text("updated_by").notNull(),
+});
+
 // ─── Inferred row types (use in app/indexer code) ──────────────
 export type AccessManagerRow = typeof accessManagers.$inferSelect;
 export type NewAccessManager = typeof accessManagers.$inferInsert;
@@ -276,3 +294,5 @@ export type NotificationRow = typeof notifications.$inferSelect;
 export type NewNotificationRow = typeof notifications.$inferInsert;
 export type NotificationOutboxRow = typeof notificationOutbox.$inferSelect;
 export type NewNotificationOutbox = typeof notificationOutbox.$inferInsert;
+export type PlatformSettingRow = typeof platformSettings.$inferSelect;
+export type NewPlatformSetting = typeof platformSettings.$inferInsert;

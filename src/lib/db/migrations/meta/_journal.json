@@ -15,6 +15,13 @@
       "when": 1779078703694,
       "tag": "0001_even_jazinda",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780366425856,
+      "tag": "0002_fearless_zombie",
+      "breakpoints": true
     }
   ]
 }

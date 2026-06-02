@@ -16,3 +16,4 @@ export type { AuditLogPort } from "./audit-log.port";
 export type { NotificationPort } from "./notification.port";
 export type { EmailPort } from "./email.port";
 export type { KybVerificationPort } from "./kyb-verification.port";
+export type { PlatformSettingsPort } from "./platform-settings.port";

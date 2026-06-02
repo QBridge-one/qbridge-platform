@@ -77,6 +77,11 @@ export interface CreateCaseInput {
   /** Jurisdiction (ISO country or free text) — drives provider
    *  routing (e.g. Canada KYB → Sumsub). */
   jurisdiction?: string;
+  /** Provider-specific verification tier. Sumsub uses this to pick
+   *  between basic-kyb-level / full-kyb-level. Persona ignores it
+   *  (its template id is fixed). Null/undefined lets the adapter
+   *  fall back to its env-configured default. */
+  tier?: "basic" | "full";
   /** Additional fields the provider might need. */
   metadata?: Record<string, string>;
 }

@@ -47,6 +47,8 @@ import { memoryAuditLogAdapter } from "./adapters/audit-log/memory.adapter";
 import { drizzleAuditLogAdapter } from "./adapters/audit-log/drizzle.adapter";
 import { personaKybAdapter } from "./adapters/kyb-verification/persona.adapter";
 import { sumsubKybAdapter } from "./adapters/kyb-verification/sumsub.adapter";
+import { memoryPlatformSettingsAdapter } from "./adapters/platform-settings/memory.adapter";
+import { drizzlePlatformSettingsAdapter } from "./adapters/platform-settings/drizzle.adapter";
 import type { KybVerificationPort } from "./ports/kyb-verification.port";
 import type { VerificationProvider } from "./core/kyb-verification";
 import { normalizeJurisdictionToCode } from "./data/countries";
@@ -113,6 +115,9 @@ export const auditLogAdapter = DB_BACKED ? drizzleAuditLogAdapter : memoryAuditL
 export const notificationAdapter = DB_BACKED
   ? drizzleNotificationAdapter
   : memoryNotificationAdapter;
+export const platformSettingsAdapter = DB_BACKED
+  ? drizzlePlatformSettingsAdapter
+  : memoryPlatformSettingsAdapter;
 
 // ─── Email provider switch ───────────────────────────────────
 // EMAIL_PROVIDER  = "console" | "resend"   (default: "console")
@@ -213,3 +218,4 @@ export type { AuditLogPort } from "./ports/audit-log.port";
 export type { NotificationPort } from "./ports/notification.port";
 export type { EmailPort } from "./ports/email.port";
 export type { KybVerificationPort } from "./ports/kyb-verification.port";
+export type { PlatformSettingsPort } from "./ports/platform-settings.port";

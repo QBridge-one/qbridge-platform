@@ -15,6 +15,7 @@ import { NextResponse } from "next/server";
 import {
   auditLogAdapter,
   organizationAdapter,
+  platformSettingsAdapter,
   selectKybProvider,
 } from "@/lib/container.server";
 import { errorResponse } from "@/lib/auth/api";
@@ -48,12 +49,18 @@ export async function POST() {
     // can't normalize (better to send something than nothing).
     const isoCountry = normalizeJurisdictionToCode(rawJurisdiction) ?? rawJurisdiction ?? undefined;
 
+    // Runtime tier override from /ops/admin/flags (DB-backed). When
+    // unset, the adapter falls back to its env-configured default.
+    // Persona ignores `tier`; Sumsub uses it to pick basic vs full.
+    const tierOverride = await platformSettingsAdapter.get("kyb.tier");
+
     const result = await provider.createCase({
       type: "kyb",
       orgId: org.id,
       orgName: org.name ?? org.slug ?? org.id,
       contactEmail: session.user.email,
       jurisdiction: isoCountry ?? undefined,
+      tier: tierOverride ?? undefined,
     });
 
     await organizationAdapter.updateOrgMetadata(org.id, {
