@@ -38,8 +38,9 @@ binds to the Clerk identity automatically — it is never a second login.
 4. **The wallet is auto-bound to the user.** `<PrivyAutoBind>` posts the Privy
    **identity token** to `POST /api/wallet/bind`; the server verifies it and
    records the address (see next section). No user signature, no popup.
-5. **Signing is silent.** `embeddedWallets.showWalletUIs: false` — QBridge owns
-   the transaction-confirmation UX; Privy does not pop its own dialogs.
+5. **Binding & message signing are silent** (`embeddedWallets.showWalletUIs:
+   false`), so the auto-bind doesn't pop a dialog. **On-chain *transactions*,
+   however, show an explicit confirmation modal** — see "Sending transactions".
 
 The dashboard `WalletStatus` component is therefore **display-only**: a brief
 "Loading wallet…" then the address with a "Linked" indicator.
@@ -75,6 +76,41 @@ falling back to Clerk `publicMetadata` only as a transitional/legacy path. The
 identity reads are wrapped so a binding-store outage degrades gracefully rather
 than breaking auth. Everything downstream (on-chain issuer registration, role
 grants, team views) reads these unchanged.
+
+## Sending transactions (signing, confirmation, gas)
+
+On-chain writes (e.g. `registerIssuer`, role grants) flow through
+`transaction.service.execute()`:
+
+1. **Server prepares** the tx — `POST /api/tx/prepare` encodes calldata from the
+   ABI, simulates, and records an audit intent. The server holds no key and
+   never signs; it only builds *what* to sign.
+2. **Client signs + sends** via `walletPort.sendTransaction`. The Privy adapter
+   routes this through Privy's native **`useSendTransaction`** (injected from
+   `<PrivyWalletStateSync>`), which reaches the embedded wallet's MPC signer.
+   > We do NOT use `@wagmi/core`'s imperative `sendTransaction` for the write
+   > path — for embedded wallets it routes to a read-only RPC transport instead
+   > of the signer (viem 2.52 then probes `wallet_sendTransaction`, which the
+   > RPC rejects). Wagmi is used for READS only. `signMessage`/`signTypedData`
+   > use the wallet's raw EIP-1193 provider.
+3. **Confirmation.** Every write passes `uiOptions: { showWalletUIs: true }`, so
+   Privy shows a pre-sign confirmation modal. This is set centrally in
+   `transaction.service` (description = the function name) so the generated
+   contract-write hooks in `src/lib/generated/**` stay untouched.
+4. **On-chain RBAC is the real gate** — `PlatformAccessManager` checks the
+   signer is authorized; off-chain checks are UX, not enforcement.
+
+### Gas sponsorship
+
+Off by default. The adapter passes `sponsor: privySponsorGas` to
+`useSendTransaction`; enable with `NEXT_PUBLIC_PRIVY_SPONSOR_GAS=true` **after**
+configuring the Privy dashboard: enable gas sponsorship, select chains, and turn
+on **"Allow transactions from the client"** (else sends fail with *"App secret
+is required…"*). Native sponsorship also requires **TEE execution** on the app's
+wallets. Client-side sponsorship is heavily rate-limited; for production Privy
+recommends sponsoring from the server — a future relay would send the sponsored
+tx via the Node SDK + app secret through `/api/tx`. When off, the wallet pays
+its own gas. See `src/config/privy.ts` (`privySponsorGas`).
 
 ## Architecture: ports & adapters
 

@@ -1,12 +1,11 @@
 // ============================================================
 // config/privy.ts
 //
-// Static Privy configuration — the analogue of config/web3auth.ts.
-//
-// Privy is the embedded-wallet provider ONLY. Clerk remains the sole
-// login: Privy authenticates each user from the Clerk session JWT
-// (JWT-based / "custom" auth) and provisions one MPC embedded wallet
-// bound to the Clerk user (sub claim). No second login screen.
+// Static Privy configuration. Privy is the embedded-wallet provider
+// ONLY — Clerk remains the sole login: Privy authenticates each user
+// from the Clerk session JWT (JWT-based / "custom" auth) and provisions
+// one MPC embedded wallet bound to the Clerk user (sub claim). No second
+// login screen.
 //
 // The dynamic half of the config — `customAuth.getCustomAccessToken`,
 // which needs the Clerk `getToken` hook — is assembled in
@@ -19,25 +18,30 @@ import { mainnet, sepolia, polygon } from "viem/chains";
 
 const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 
-// Mirrors config/web3auth.ts: "mainnet" → ETH L1 + Polygon, else Sepolia devnet.
+// "mainnet" → ETH L1 + Polygon, else Sepolia devnet. Keep in lockstep
+// with lib/privy-wagmi-config.ts.
 const isMainnet = process.env.NEXT_PUBLIC_PRIVY_NETWORK === "mainnet";
 
 export const privyAppId = appId ?? "";
 
 /** True once NEXT_PUBLIC_PRIVY_APP_ID is set. Gates the provider tree
- *  exactly like `isWeb3AuthConfigured` did for Web3Auth. */
+ *  and the useWallet/WalletStatus surfaces. */
 export const isPrivyConfigured = Boolean(appId);
 
-/** Opt in to Privy native gas sponsorship for on-chain sends (passes
- *  `sponsor: true`).
+/** Opt in to Privy native gas sponsorship for on-chain sends (the adapter
+ *  passes `sponsor: true` to useSendTransaction).
  *
- *  OFF by default: sponsorship spends the app's funds, so Privy requires
- *  SERVER-SIDE authorization with the app secret — a pure client-side
- *  `sponsor: true` errors with "App secret is required for gas sponsored
- *  transactions." Enabling this needs the server-side sponsorship path
- *  wired up first (Privy server SDK + dashboard authorization keys); only
- *  then set NEXT_PUBLIC_PRIVY_SPONSOR_GAS=true. Until then the wallet pays
- *  its own gas (and the confirmation modal still shows). */
+ *  OFF by default — it's per-environment because it depends on dashboard
+ *  setup and spends your gas budget. To use it client-side you must, in the
+ *  Privy dashboard: enable gas sponsorship, select the chain(s), and turn on
+ *  "Allow transactions from the client" (otherwise sends fail with "App
+ *  secret is required…" and can only be sponsored server-side). Then set
+ *  NEXT_PUBLIC_PRIVY_SPONSOR_GAS=true. When off, the wallet pays its own gas.
+ *
+ *  Production note: Privy rate-limits client-side sponsorship heavily and
+ *  recommends sponsoring from your server for finer control — a future
+ *  server-relay through /api/tx would route the sponsored send via the
+ *  Node SDK + app secret. */
 export const privySponsorGas =
   (process.env.NEXT_PUBLIC_PRIVY_SPONSOR_GAS ?? "false").toLowerCase() === "true";
 
@@ -53,11 +57,10 @@ export const basePrivyConfig: Omit<PrivyClientConfig, "customAuth"> = {
     ethereum: {
       createOnLogin: "users-without-wallets",
     },
-    // The embedded wallet is app-controlled (provisioned for this Clerk user),
-    // so QBridge owns the signing UX. Suppress Privy's own confirmation modals
-    // — otherwise the silent auto-link SIWE pops a "Sign message" dialog.
-    // NOTE: this also makes on-chain transactions sign without Privy's modal;
-    // QBridge's own transaction flow provides the user-facing confirmation.
+    // Default to silent (no Privy modal) so the auto-bind SIWE-style signing
+    // doesn't pop a dialog. On-chain SENDS override this per-call
+    // (uiOptions.showWalletUIs: true in privy.adapter) to show an explicit
+    // pre-sign confirmation. So: signing/binding is silent; writes confirm.
     showWalletUIs: false,
   },
   supportedChains: isMainnet ? [mainnet, polygon] : [sepolia],

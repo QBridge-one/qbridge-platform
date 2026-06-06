@@ -1,19 +1,19 @@
 // ============================================================
 // lib/adapters/wallet/privy.adapter.ts
 //
-// Privy adapter — implements WalletPort.
+// Privy adapter — implements WalletPort. Both injected by PrivyWalletStateSync:
 //
-// Signing / sending go through the Privy embedded wallet's own EIP-1193
-// provider (`wallet.getEthereumProvider()`), injected by
-// PrivyWalletStateSync. This is Privy's documented path for embedded
-// wallets: `eth_sendTransaction` etc. are handled by the wallet (MPC
-// signing, then broadcast). We deliberately do NOT use @wagmi/core's
-// imperative sendTransaction here — for embedded wallets it routes to a
-// read-only RPC transport instead of the signer (viem 2.52 then probes
-// `wallet_sendTransaction`, which the RPC rejects).
+//   - sendTransaction → Privy's native `useSendTransaction` (`privySend`),
+//     which supports gas sponsorship (`sponsor`) and a pre-sign confirmation
+//     modal (`uiOptions`). Falls back to the raw provider if not yet injected.
+//   - signMessage / signTypedData → the embedded wallet's own EIP-1193
+//     provider (`wallet.getEthereumProvider()`).
 //
-// Wagmi is still used for READS (useAccount/useReadContract) via the
-// Privy WagmiProvider; only the write/sign path lives here.
+// Both reach the embedded wallet's MPC signer. We deliberately do NOT use
+// @wagmi/core's imperative sendTransaction — for embedded wallets it routes to
+// a read-only RPC transport instead of the signer (viem 2.52 then probes
+// `wallet_sendTransaction`, which the RPC rejects). Wagmi is used for READS
+// only (useAccount / useReadContract) via the Privy WagmiProvider.
 // ============================================================
 
 import type { WalletPort } from "../../ports/wallet.port";
