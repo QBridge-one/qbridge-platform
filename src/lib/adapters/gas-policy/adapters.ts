@@ -1,8 +1,9 @@
 // ============================================================
 // lib/adapters/gas-policy/no-sponsorship.adapter.ts
-// Default gas policy adapter — user always pays gas.
-// Active while on Web3Auth free tier.
-// Swap for AlchemyGasManagerAdapter when Alchemy is integrated.
+// Default gas policy adapter — user/wallet always pays gas (this port).
+// Privy native sponsorship is applied in the wallet adapter via the
+// `sponsor` flag (see config/privy.ts), independent of this adapter.
+// Swap for AlchemyGasManagerAdapter if/when Alchemy paymaster is integrated.
 // ============================================================
 
 import type { GasPolicyPort } from "../../ports/index";

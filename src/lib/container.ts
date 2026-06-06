@@ -9,24 +9,24 @@
 // Everything else imports port interfaces or this container.
 //
 // ─── Replaceability ─────────────────────────────────────────
-// To swap Web3Auth → Alchemy (or Turnkey, or any other WalletPort
-// implementation):
+// Privy is the active wallet provider. To swap it for Alchemy / Turnkey
+// (or any other WalletPort implementation):
 //
 //   1. Implement the adapter under src/lib/adapters/wallet/.
 //      (alchemy.adapter.ts is already stubbed for ERC-4337 smart
 //       accounts — fill it in following its TODO comments.)
-//   2. Add the new branch to the WALLET_PROVIDER switch below.
+//   2. Add the new branch to the pickWalletAdapter() switch below.
 //   3. In src/lib/hooks/useWallet.ts, add an internal hook
 //      implementation for the new provider and gate the export
 //      on the same env var.
-//   4. In src/components/providers/, mount the provider's React
-//      tree (e.g. an Alchemy AccountProvider) instead of (or
-//      alongside) <Web3AuthProviders>.
+//   4. In src/components/providers/, mount the provider's React tree
+//      alongside privy-providers.tsx and select it in
+//      wallet-providers.tsx.
 //   5. (Optional) update gasPolicyAdapter / multisigAdapter if the
 //      new wallet supports gas sponsorship or multisig flows that
 //      the old one didn't.
 //
-// Identity / org / auth-webhook / wallet-link / audit-log adapters
+// Identity / org / auth-webhook / wallet-binding / audit-log adapters
 // are server-only — see container.server.ts.
 // ============================================================
 

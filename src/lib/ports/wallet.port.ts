@@ -1,7 +1,7 @@
 // ============================================================
 // lib/ports/wallet.port.ts
 // WalletProvider port — the primary port for all wallet operations.
-// Every wallet adapter (Web3Auth, Alchemy, injected) implements this.
+// Every wallet adapter (Privy, Alchemy, injected) implements this.
 // Application code ONLY imports this interface, never an adapter directly.
 // ============================================================
 
@@ -27,7 +27,7 @@ export interface WalletPort {
 
   // ── Transactions ─────────────────────────────────────────
   // sendTransaction is the main write primitive.
-  // Web3Auth adapter: produces a regular EOA transaction.
+  // Privy adapter: produces a regular EOA transaction.
   // Alchemy adapter: produces a UserOperation (ERC-4337).
   // The caller never knows the difference.
   sendTransaction(request: TransactionRequest): Promise<Hex>;
@@ -37,7 +37,7 @@ export interface WalletPort {
 
   // ── Smart account (optional capability) ──────────────────
   // Returns null if the adapter does not support smart accounts.
-  // Alchemy adapter implements this. Web3Auth adapter returns null.
+  // Alchemy adapter implements this. Privy (EOA) adapter returns null.
   getSmartAccountConfig(): SmartAccountConfig | null;
 
   // ── Lifecycle ────────────────────────────────────────────

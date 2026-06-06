@@ -45,7 +45,7 @@ import { explorerAddressUrl, explorerTxUrl } from "@/lib/explorer-urls";
 
 /** Deployment chain the wallet must be on. Mirrors src/config/privy.ts. */
 const EXPECTED_CHAIN_ID =
-  process.env.NEXT_PUBLIC_WEB3AUTH_NETWORK === "mainnet" ? 1 : 11155111;
+  process.env.NEXT_PUBLIC_PRIVY_NETWORK === "mainnet" ? 1 : 11155111;
 
 function notifyRoleTxSuccess(chainId: number, hash: Hex, roleLabel: string) {
   notifyTxSuccess(`${roleLabel}: updated on-chain`, chainId, hash);

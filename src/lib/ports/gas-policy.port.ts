@@ -1,8 +1,10 @@
 // ============================================================
 // lib/ports/gas-policy.port.ts
 // GasPolicy port — sponsorship rules per function/tier.
-// Web3Auth adapter: always returns "not_applicable".
+// noSponsorship adapter: always returns "not_applicable" (wallet pays).
 // Alchemy Gas Manager adapter: checks policy and builds paymaster data.
+// NOTE: Privy native gas sponsorship is handled in the wallet adapter
+// (sponsor flag), separate from this port — see src/config/privy.ts.
 // ============================================================
 
 import type { Address, Hex, GasPolicy, TransactionRequest } from "../core/types";

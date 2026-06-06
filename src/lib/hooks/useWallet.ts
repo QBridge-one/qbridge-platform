@@ -5,7 +5,7 @@
 //
 // THE SINGLE WALLET HOOK every client component uses.
 // Returns a vendor-agnostic, domain-level API. Components must
-// NEVER import @web3auth/modal/react, wagmi, @alchemy/aa, or any
+// NEVER import @privy-io/react-auth, wagmi, @alchemy/aa, or any
 // other vendor SDK directly. This file is the only allowed
 // boundary between vendor SDKs and the rest of the app.
 //

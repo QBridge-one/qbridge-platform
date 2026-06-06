@@ -26,7 +26,7 @@ import { explorerAddressUrl, explorerTxUrl } from "@/lib/explorer-urls";
 import { notifyTxSuccess } from "@/lib/notify-tx-success";
 
 const EXPECTED_CHAIN_ID =
-  process.env.NEXT_PUBLIC_WEB3AUTH_NETWORK === "mainnet" ? 1 : 11155111;
+  process.env.NEXT_PUBLIC_PRIVY_NETWORK === "mainnet" ? 1 : 11155111;
 
 const ISSUER_STATUS_LABEL: Record<number, string> = {
   0: "None",

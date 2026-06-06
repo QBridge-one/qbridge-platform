@@ -15,17 +15,17 @@
 //            required. Opt-in only.
 //   clerk  : Clerk Organizations (requires CLERK_SECRET_KEY etc.)
 //
-// WALLET_PROVIDER    = "web3auth" | "alchemy" | "turnkey"
-//   web3auth : Web3Auth embedded EOA (current default)
-//   alchemy  : Alchemy Account Kit smart account (stubbed)
-//   turnkey  : Turnkey HSM-backed signer (not yet implemented)
+// NEXT_PUBLIC_WALLET_PROVIDER = "privy" | "alchemy" | "turnkey"
+//   privy   : Privy embedded MPC wallet (current default)
+//   alchemy : Alchemy Account Kit smart account (stubbed)
+//   turnkey : Turnkey HSM-backed signer (not yet implemented)
 //
 // To swap wallet provider:
 //   1. Implement the new adapter under src/lib/adapters/wallet/.
-//   2. Add it to the WALLET_PROVIDER switch below.
+//   2. Add it to the pickWalletAdapter() switch in container.ts.
 //   3. Update the corresponding *client* side in
-//      src/components/providers/ (e.g., add an Alchemy AccountProvider
-//      tree alongside web3auth-providers.tsx and pick which to mount).
+//      src/components/providers/ (add a provider tree alongside
+//      privy-providers.tsx and select it in wallet-providers.tsx).
 //   4. Update src/lib/hooks/useWallet.ts to add the new internal
 //      implementation and gate it on the provider.
 //   5. Nothing else in /app or /components needs to change — the
@@ -91,10 +91,11 @@ export const IDENTITY_PROVIDER_RESOLVED = IDENTITY_PROVIDER as
 // providers under components/providers/). This export documents
 // which provider is active for downstream services that need to
 // know (e.g. "is this a smart account?" affects gas-policy).
-export const WALLET_PROVIDER = (process.env.WALLET_PROVIDER ?? "web3auth").toLowerCase() as
-  | "web3auth"
-  | "alchemy"
-  | "turnkey";
+export const WALLET_PROVIDER = (
+  process.env.NEXT_PUBLIC_WALLET_PROVIDER ??
+  process.env.WALLET_PROVIDER ??
+  "privy"
+).toLowerCase() as "privy" | "alchemy" | "turnkey";
 
 // ─── DB-backed persistence switches ──────────────────────────
 // Audit + notifications use Postgres when DATABASE_URL is set

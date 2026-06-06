@@ -114,5 +114,5 @@ export async function getChainRolesForWallets(
  *  in src/config/privy.ts (mainnet vs sepolia). When the app grows
  *  multi-chain this should accept a chain id explicitly. */
 export function activeChainId(): number {
-  return process.env.NEXT_PUBLIC_WEB3AUTH_NETWORK === "mainnet" ? 1 : 11155111;
+  return process.env.NEXT_PUBLIC_PRIVY_NETWORK === "mainnet" ? 1 : 11155111;
 }
