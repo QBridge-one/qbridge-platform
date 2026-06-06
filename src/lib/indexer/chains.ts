@@ -1,7 +1,7 @@
 // ============================================================
 // lib/indexer/chains.ts
 // Per-chain config the indexer needs: RPC URL, viem chain, and
-// where to start backfilling from. Mirrors src/config/web3auth.ts
+// where to start backfilling from. Mirrors src/config/privy.ts
 // so the indexer and the app talk to the same network.
 // ============================================================
 

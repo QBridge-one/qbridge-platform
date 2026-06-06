@@ -37,6 +37,7 @@ import {
 import { kybFieldsFromOrganizationPublicMeta } from "../clerk/issuer-metadata";
 import { kybCaseFromMetadata } from "../../core/kyb-verification";
 import { chainRegistrationFromMetadata } from "../../core/chain-registration";
+import { walletBindingAdapter } from "../wallet-binding";
 import {
   mapRoleFromClerk,
   mapRoleToClerk,
@@ -57,25 +58,39 @@ function pickPrimaryWalletFromMeta(meta: unknown): Address | null {
   return null;
 }
 
-/** Batch-fetch userIds → primaryWallet (linked via SIWE). Returns an
- *  empty Map when the input is empty. Tolerates partial failures by
- *  returning whatever Clerk gave us. */
+/** Batch-fetch userIds → primaryWallet. Reads the canonical Postgres
+ *  binding store first, then fills any gaps from Clerk publicMetadata
+ *  (transitional fallback for legacy / Web3Auth users). Returns an empty
+ *  Map for empty input; tolerates partial failures. */
 async function fetchWalletMap(
   cc: ClerkClient,
   userIds: string[],
 ): Promise<Map<string, Address>> {
   const out = new Map<string, Address>();
   if (userIds.length === 0) return out;
-  // De-dupe to keep the Clerk request small.
+  // De-dupe to keep lookups small.
   const unique = Array.from(new Set(userIds));
+
+  // Canonical: Postgres binding store.
   try {
-    const list = await cc.users.getUserList({ userId: unique, limit: unique.length });
-    for (const u of list.data) {
-      const wallet = pickPrimaryWalletFromMeta(u.publicMetadata);
-      if (wallet) out.set(u.id, wallet);
-    }
+    const bound = await walletBindingAdapter.getMany(unique);
+    for (const [id, addr] of bound) out.set(id, addr);
   } catch {
-    // Fall through with whatever's been resolved (none, in this case).
+    // Ignore — fall back to Clerk metadata below.
+  }
+
+  // Fallback: Clerk publicMetadata for users without a binding.
+  const missing = unique.filter((id) => !out.has(id));
+  if (missing.length > 0) {
+    try {
+      const list = await cc.users.getUserList({ userId: missing, limit: missing.length });
+      for (const u of list.data) {
+        const wallet = pickPrimaryWalletFromMeta(u.publicMetadata);
+        if (wallet) out.set(u.id, wallet);
+      }
+    } catch {
+      // Fall through with whatever's been resolved.
+    }
   }
   return out;
 }

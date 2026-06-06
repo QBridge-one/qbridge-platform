@@ -10,7 +10,7 @@
 // boundary between vendor SDKs and the rest of the app.
 //
 // Replaceability story:
-//   - Today  : Web3Auth (embedded EOA via wagmi connector).
+//   - Today  : Privy (embedded MPC EOA via wagmi connector).
 //   - Future : Alchemy Account Kit (smart account + passkey).
 //   - Future : Turnkey (HSM-backed signer).
 //
@@ -26,11 +26,14 @@
 import { useCallback } from "react";
 import { useAccount, useChainId } from "wagmi";
 import {
-  useWeb3AuthConnect,
-  useWeb3AuthDisconnect,
-} from "@web3auth/modal/react";
+  usePrivy,
+  useWallets,
+  useLogout,
+  getEmbeddedConnectedWallet,
+} from "@privy-io/react-auth";
+import { useSetActiveWallet } from "@privy-io/wagmi";
 import type { WalletState, Address, ChainId } from "../core/types";
-import { isWeb3AuthConfigured } from "@/config/web3auth";
+import { isPrivyConfigured } from "@/config/privy";
 
 export interface UseWalletReturn {
   state: WalletState;
@@ -47,7 +50,7 @@ export interface UseWalletReturn {
 
 // ─── Disconnected stub ───────────────────────────────────────
 // Used when no wallet provider is configured (e.g., dev mode
-// without NEXT_PUBLIC_WEB3AUTH_CLIENT_ID set). All actions are
+// without NEXT_PUBLIC_PRIVY_APP_ID set). All actions are
 // no-ops and the state is fully-disconnected. Lets the rest of
 // the app render without a runtime error from missing provider.
 function useWalletStub(): UseWalletReturn {
@@ -73,39 +76,68 @@ function useWalletStub(): UseWalletReturn {
   };
 }
 
-// ─── Web3Auth implementation ─────────────────────────────────
-function useWalletWeb3Auth(): UseWalletReturn {
-  const { address, isConnected } = useAccount();
+// ─── Privy implementation ────────────────────────────────────
+// Privy embedded MPC wallet, authenticated via the Clerk session JWT
+// (custom auth). The wallet is provisioned on login (createOnLogin) and
+// surfaced as a wagmi connector, so address/chain come from wagmi.
+// "Connect" has no modal: it just ensures the embedded wallet is wagmi's
+// active account; "disconnect" is a Privy logout.
+function useWalletPrivy(): UseWalletReturn {
+  const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount();
   const chainId = useChainId();
-  const { connect, loading } = useWeb3AuthConnect();
-  const { disconnect: web3AuthDisconnect } = useWeb3AuthDisconnect();
+  const { ready, authenticated } = usePrivy();
+  const { wallets } = useWallets();
+  const { setActiveWallet } = useSetActiveWallet();
+  const { logout } = useLogout();
+
+  const embeddedAddress =
+    (getEmbeddedConnectedWallet(wallets)?.address as Address | undefined) ??
+    undefined;
+
+  // The embedded wallet is the canonical wallet. Only surface "connected"
+  // once wagmi's active account matches it — otherwise a stale/other account
+  // flashes briefly before setActiveWallet() promotes the embedded wallet,
+  // and signing could target the wrong address.
+  const isActiveEmbedded =
+    !!embeddedAddress &&
+    !!wagmiAddress &&
+    wagmiAddress.toLowerCase() === embeddedAddress.toLowerCase();
+
+  const address: Address | null = isActiveEmbedded
+    ? (wagmiAddress as Address)
+    : null;
+  const isConnected = isActiveEmbedded && wagmiConnected;
 
   const handleConnect = useCallback(() => {
-    connect();
-  }, [connect]);
+    const embedded = getEmbeddedConnectedWallet(wallets);
+    if (embedded) void setActiveWallet(embedded).catch(() => {});
+  }, [wallets, setActiveWallet]);
 
   const handleDisconnect = useCallback(() => {
-    web3AuthDisconnect({ cleanup: true });
-  }, [web3AuthDisconnect]);
+    void logout();
+  }, [logout]);
+
+  const shortAddress = address
+    ? `${address.slice(0, 6)}…${address.slice(-4)}`
+    : null;
 
   const state: WalletState = {
     isConnected,
-    address: (address as Address) ?? null,
+    address,
     chainId: chainId ?? null,
     walletType: "embedded",
     isSmartAccount: false,
     isSafe: false,
   };
 
-  const shortAddress = address
-    ? `${address.slice(0, 6)}…${address.slice(-4)}`
-    : null;
-
   return {
     state,
     isConnected,
-    isConnecting: loading,
-    address: (address as Address) ?? null,
+    // Initializing, or the embedded wallet exists but hasn't become wagmi's
+    // active account yet (the window the flash-fix above hides).
+    isConnecting:
+      !ready || (authenticated && !!embeddedAddress && !isActiveEmbedded),
+    address,
     chainId: chainId ?? null,
     isSmartAccount: false,
     isSafe: false,
@@ -118,6 +150,6 @@ function useWalletWeb3Auth(): UseWalletReturn {
 // ─── Provider switch (module-load constant — safe re. hooks rules) ──
 // Stable across renders, so React's rules-of-hooks invariant holds:
 // a given mount of useWallet always calls the same underlying hook.
-export const useWallet: () => UseWalletReturn = isWeb3AuthConfigured
-  ? useWalletWeb3Auth
+export const useWallet: () => UseWalletReturn = isPrivyConfigured
+  ? useWalletPrivy
   : useWalletStub;

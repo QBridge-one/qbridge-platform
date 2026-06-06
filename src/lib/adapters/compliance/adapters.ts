@@ -106,7 +106,10 @@ export class OnChainComplianceAdapter implements CompliancePort {
       );
       if (!client) return { status: "skipped" };
 
-      await client.simulateContract({
+      // Cast the method to avoid TS2590 (viem's simulateContract infers a
+      // union too complex to represent when the ABI is untyped). We only
+      // await this to surface a compliance revert; the return is unused.
+      await (client.simulateContract as any)({
         address: params.contractCall.address,
         abi: params.contractCall.abi as any,
         functionName: params.contractCall.functionName,

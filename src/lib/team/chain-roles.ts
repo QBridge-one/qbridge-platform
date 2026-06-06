@@ -111,7 +111,7 @@ export async function getChainRolesForWallets(
 }
 
 /** Convenience: pick the active chain id from env. Matches the rule
- *  in src/config/web3auth.ts (mainnet vs sepolia). When the app grows
+ *  in src/config/privy.ts (mainnet vs sepolia). When the app grows
  *  multi-chain this should accept a chain id explicitly. */
 export function activeChainId(): number {
   return process.env.NEXT_PUBLIC_WEB3AUTH_NETWORK === "mainnet" ? 1 : 11155111;

@@ -14,6 +14,7 @@ import { kybCaseFromMetadata } from "../../core/kyb-verification";
 import { chainRegistrationFromMetadata } from "../../core/chain-registration";
 import { isAppRole } from "../../core/identity.types";
 import { unauthenticated } from "../../core/errors";
+import { walletBindingAdapter } from "../wallet-binding";
 
 /** Read kind from a Clerk org's publicMetadata. Default: "issuer". */
 function mapKindFromMetadata(meta: unknown): "ops" | "issuer" {
@@ -83,13 +84,17 @@ class ClerkIdentityAdapter implements IdentityPort {
     if (!a.userId) return null;
     const u = await currentUser();
     if (!u) return null;
+    // Primary wallet is canonical in the Postgres binding store; Clerk
+    // publicMetadata is only a transitional fallback (legacy / Web3Auth).
+    // Trap DB errors so a binding-store blip can't break auth/session.
+    const boundWallet = await walletBindingAdapter.get(u.id).catch(() => null);
     const user: AppUser = {
       id: u.id,
       authUserId: u.id,
       email: u.primaryEmailAddress?.emailAddress ?? u.emailAddresses[0]?.emailAddress ?? "",
       displayName: [u.firstName, u.lastName].filter(Boolean).join(" ") || null,
       imageUrl: u.imageUrl ?? null,
-      primaryWallet: pickPrimaryWallet(u.publicMetadata),
+      primaryWallet: boundWallet ?? pickPrimaryWallet(u.publicMetadata),
       createdAt: new Date(u.createdAt).toISOString(),
     };
     let activeOrg: AppOrg | null = null;
@@ -138,13 +143,14 @@ class ClerkIdentityAdapter implements IdentityPort {
     const cc = await clerkClient();
     try {
       const u = await cc.users.getUser(userId);
+      const boundWallet = await walletBindingAdapter.get(u.id).catch(() => null);
       return {
         id: u.id,
         authUserId: u.id,
         email: u.primaryEmailAddress?.emailAddress ?? u.emailAddresses[0]?.emailAddress ?? "",
         displayName: [u.firstName, u.lastName].filter(Boolean).join(" ") || null,
         imageUrl: u.imageUrl ?? null,
-        primaryWallet: pickPrimaryWallet(u.publicMetadata),
+        primaryWallet: boundWallet ?? pickPrimaryWallet(u.publicMetadata),
         createdAt: new Date(u.createdAt).toISOString(),
       };
     } catch {

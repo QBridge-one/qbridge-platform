@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Web3AuthProviders } from "@/components/providers/web3auth-providers";
+import { WalletProviders } from "@/components/providers/wallet-providers";
 import { IdentityProvider } from "@/components/providers/identity-provider";
 import { AppToaster } from "@/components/providers/app-toaster";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -74,12 +74,12 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           <IdentityProvider>
-            <Web3AuthProviders>
+            <WalletProviders>
               <TooltipProvider>
                 {children}
                 <AppToaster />
               </TooltipProvider>
-            </Web3AuthProviders>
+            </WalletProviders>
           </IdentityProvider>
         </ThemeProvider>
       </body>

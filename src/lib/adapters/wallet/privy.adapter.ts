@@ -1,13 +1,14 @@
 // ============================================================
-// lib/adapters/wallet/web3auth.adapter.ts
+// lib/adapters/wallet/privy.adapter.ts
 //
-// Web3Auth adapter — implements WalletPort.
-// Uses wagmi core (imperative) actions — NOT hooks.
-// Wagmi core actions work outside React components.
+// Privy adapter — implements WalletPort.
+// Direct analogue of web3auth.adapter.ts: Privy embedded wallets surface
+// as wagmi connectors (via @privy-io/wagmi), so signing / sending go
+// through the same wagmi core (imperative) actions — NOT hooks.
 //
-// The wagmi config MUST be the one from Web3Auth's WagmiProvider (with
-// the Web3Auth connector). WalletStateSync injects it via setWagmiConfig.
-// Fallback to lib/wagmi-config.ts only before sync — will fail if disconnected.
+// The wagmi config MUST be the one from Privy's WagmiProvider (with the
+// embedded-wallet connector). PrivyWalletStateSync injects it via
+// setWagmiConfig. Fallback to lib/privy-wagmi-config.ts only before sync.
 // ============================================================
 
 import {
@@ -17,7 +18,7 @@ import {
   switchChain as wagmiSwitchChain,
 } from "@wagmi/core";
 import type { Config } from "wagmi";
-import { wagmiConfig } from "@/lib/wagmi-config";
+import { privyWagmiConfig } from "@/lib/privy-wagmi-config";
 
 import type { WalletPort } from "../../ports/wallet.port";
 import type {
@@ -30,18 +31,18 @@ import {
   adapterNotImplemented,
 } from "../../core/errors";
 
-export class Web3AuthAdapter implements WalletPort {
+export class PrivyWalletAdapter implements WalletPort {
   private stateListeners: Set<(state: WalletState) => void> = new Set();
-  /** Config from Web3Auth WagmiProvider — has the Web3Auth connector. Set by WalletStateSync. */
+  /** Config from Privy WagmiProvider — has the embedded-wallet connector. Set by PrivyWalletStateSync. */
   private wagmiConfigRef: Config | null = null;
 
-  /** Called by WalletStateSync — use the config from WagmiProvider (has Web3Auth connector). */
+  /** Called by PrivyWalletStateSync — use the config from WagmiProvider (has Privy connector). */
   setWagmiConfig(config: Config): void {
     this.wagmiConfigRef = config;
   }
 
   private getConfig(): Config {
-    return this.wagmiConfigRef ?? wagmiConfig;
+    return this.wagmiConfigRef ?? privyWagmiConfig;
   }
 
   private currentState: WalletState = {
@@ -54,20 +55,22 @@ export class Web3AuthAdapter implements WalletPort {
   };
 
   // ── Connection ─────────────────────────────────────────────
-  // Connect/disconnect are UI-driven via useWallet hook.
+  // Connect/disconnect are UI-driven via useWallet hook. The Privy
+  // embedded wallet is provisioned on Clerk login (createOnLogin) and
+  // surfaced through wagmi by PrivyWalletStateSync — there is no modal.
   async connect(): Promise<void> {
-    throw adapterNotImplemented("Web3AuthAdapter.connect — use useWallet().connect() in UI");
+    throw adapterNotImplemented("PrivyWalletAdapter.connect — use useWallet().connect() in UI");
   }
 
   async disconnect(): Promise<void> {
-    throw adapterNotImplemented("Web3AuthAdapter.disconnect — use useWallet().disconnect() in UI");
+    throw adapterNotImplemented("PrivyWalletAdapter.disconnect — use useWallet().disconnect() in UI");
   }
 
   getState(): WalletState {
     return this.currentState;
   }
 
-  // Called by WalletStateSync on every wagmi state change
+  // Called by PrivyWalletStateSync on every wagmi state change
   updateState(state: Partial<WalletState>): void {
     this.currentState = { ...this.currentState, ...state };
     this.stateListeners.forEach((cb) => cb(this.currentState));
@@ -76,14 +79,14 @@ export class Web3AuthAdapter implements WalletPort {
   // ── Identity ───────────────────────────────────────────────
   async getAddress(): Promise<Address> {
     if (!this.currentState.address) {
-      throw providerNotInitialized("Web3Auth: wallet not connected");
+      throw providerNotInitialized("Privy: wallet not connected");
     }
     return this.currentState.address;
   }
 
   async getChainId(): Promise<ChainId> {
     if (!this.currentState.chainId) {
-      throw providerNotInitialized("Web3Auth: wallet not connected");
+      throw providerNotInitialized("Privy: wallet not connected");
     }
     return this.currentState.chainId;
   }
@@ -148,7 +151,7 @@ export class Web3AuthAdapter implements WalletPort {
 
   // ── Smart account ──────────────────────────────────────────
   getSmartAccountConfig(): SmartAccountConfig | null {
-    return null; // Web3Auth = EOA only
+    return null; // Privy embedded wallet = EOA only
   }
 
   // ── Lifecycle ──────────────────────────────────────────────
@@ -162,4 +165,4 @@ export class Web3AuthAdapter implements WalletPort {
   }
 }
 
-export const web3AuthAdapter = new Web3AuthAdapter();
+export const privyAdapter = new PrivyWalletAdapter();

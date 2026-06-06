@@ -30,7 +30,7 @@
 // are server-only — see container.server.ts.
 // ============================================================
 
-import { web3AuthAdapter } from "./adapters/wallet/web3auth.adapter";
+import { privyAdapter } from "./adapters/wallet/privy.adapter";
 // import { alchemyAdapter } from "./adapters/wallet/alchemy.adapter";   // when implemented
 // import { turnkeyAdapter } from "./adapters/wallet/turnkey.adapter";   // when implemented
 
@@ -57,7 +57,7 @@ import type { WalletPort } from "./ports/wallet.port";
 // ─── Wallet provider switch ──────────────────────────────────
 // NEXT_PUBLIC_ so it's available on the client.
 const WALLET_PROVIDER = (
-  process.env.NEXT_PUBLIC_WALLET_PROVIDER ?? "web3auth"
+  process.env.NEXT_PUBLIC_WALLET_PROVIDER ?? "privy"
 ).toLowerCase();
 
 function pickWalletAdapter(): WalletPort {
@@ -66,9 +66,9 @@ function pickWalletAdapter(): WalletPort {
     //   return alchemyAdapter;
     // case "turnkey":
     //   return turnkeyAdapter;
-    case "web3auth":
+    case "privy":
     default:
-      return web3AuthAdapter;
+      return privyAdapter; // Privy embedded MPC wallet — wagmi-compatible, Clerk JWT auth
   }
 }
 
@@ -92,7 +92,7 @@ export const transactionService = new TransactionService({
 export type { WalletPort } from "./ports/wallet.port";
 export type { BlockchainPort } from "./ports/blockchain.port";
 
-/** Server routes + WalletStateSync — only these may reach for the
- *  concrete Web3Auth adapter (e.g. to inject the WagmiProvider
- *  config). Everything else uses `walletAdapter` (the WalletPort). */
-export { memoryIntentAdapter, viemBroadcastAdapter, web3AuthAdapter };
+/** Server routes + PrivyWalletStateSync — only these may reach for the
+ *  concrete wallet adapter (e.g. to inject the WagmiProvider config).
+ *  Everything else uses `walletAdapter` (the WalletPort). */
+export { memoryIntentAdapter, viemBroadcastAdapter, privyAdapter };

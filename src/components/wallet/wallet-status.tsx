@@ -3,51 +3,40 @@
 // ============================================================
 // components/wallet/wallet-status.tsx
 //
-// Dashboard-only wallet UI. Renders inside /workspace and /ops
-// headers. Drives connect / link / disconnect via the abstract
-// hooks (useWallet, useWalletLink) — never imports Web3Auth or
-// any other vendor SDK directly. When the wallet provider is
-// swapped to Alchemy or Turnkey, this file does NOT change; only
-// useWallet's internal implementation does.
+// Dashboard-only wallet UI (in /workspace and /ops headers). Reads the
+// abstract useWallet() hook — never a vendor SDK directly.
 //
-// States:
-//   - placeholder    — wallet provider env not configured
-//   - disconnected   — show "Connect wallet"
-//   - connecting     — show spinner / disabled button
-//   - connected      — show shortAddress + actions (Link, Disconnect)
-//   - linked         — additionally show "Linked" + Unlink option
+// The Privy embedded wallet auto-provisions on Clerk login and is bound
+// to the user automatically by <PrivyAutoBind> (verified identity token,
+// no SIWE). So this is purely a status display: a brief "Loading wallet…"
+// then the address, with a "Linked" indicator once the binding lands.
 // ============================================================
 
-import { useTransition } from "react";
-import { Wallet, LogOut, Link2, Link2Off, Loader2, Check } from "lucide-react";
-import { toast } from "sonner";
+import { Wallet, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useWallet } from "@/lib/hooks/useWallet";
-import { useWalletLink } from "@/lib/hooks/useWalletLink";
-import { isWeb3AuthConfigured } from "@/config/web3auth";
+import { isActiveWalletConfigured } from "@/config/wallet";
 import type { Address } from "@/lib/core/types";
 
 export interface WalletStatusProps {
-  /** Address linked to the current Clerk user via SIWE proof, if any. */
+  /** The user's primary wallet (from the Postgres binding), if any. */
   linkedAddress?: Address | null;
 }
 
 export function WalletStatus({ linkedAddress = null }: WalletStatusProps) {
-  if (!isWeb3AuthConfigured) {
+  if (!isActiveWalletConfigured) {
     return (
       <Button
         variant="outline"
         size="sm"
         disabled
-        title="Set NEXT_PUBLIC_WEB3AUTH_CLIENT_ID (or swap WALLET_PROVIDER) and restart"
+        title="Set NEXT_PUBLIC_PRIVY_APP_ID and restart"
       >
         <Wallet className="mr-2 h-4 w-4" />
         Wallet not configured
@@ -59,68 +48,25 @@ export function WalletStatus({ linkedAddress = null }: WalletStatusProps) {
 }
 
 function WalletStatusInner({ linkedAddress }: { linkedAddress: Address | null }) {
-  const {
-    isConnected,
-    isConnecting,
-    address,
-    shortAddress,
-    connect,
-    disconnect,
-  } = useWallet();
-  const { link, unlink, isLinking } = useWalletLink();
-  const [, startTransition] = useTransition();
-
-  if (!isConnected || !address) {
-    return (
-      <Button
-        variant="default"
-        size="sm"
-        className="h-8 px-2 sm:px-3"
-        onClick={() => connect()}
-        disabled={isConnecting}
-        aria-label={isConnecting ? "Connecting wallet" : "Connect wallet"}
-      >
-        {isConnecting ? (
-          <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
-        ) : (
-          <Wallet className="h-4 w-4 sm:mr-2" />
-        )}
-        <span className="hidden sm:inline">
-          {isConnecting ? "Connecting…" : "Connect wallet"}
-        </span>
-      </Button>
-    );
-  }
+  const { isConnected, address, shortAddress } = useWallet();
 
   const isLinked =
-    !!linkedAddress && linkedAddress.toLowerCase() === address.toLowerCase();
+    !!linkedAddress &&
+    !!address &&
+    linkedAddress.toLowerCase() === address.toLowerCase();
 
-  const handleLink = async () => {
-    const r = await link();
-    if (r.ok) {
-      toast.success("Wallet linked to your account.");
-      startTransition(() => {
-        // Trigger server component refresh so layouts re-read primaryWallet
-        if (typeof window !== "undefined") window.location.reload();
-      });
-    } else {
-      toast.error("Could not link wallet. Try again.");
-    }
-  };
-
-  const handleUnlink = async () => {
-    const r = await unlink();
-    if (r.ok) {
-      toast.success("Wallet unlinked.");
-      startTransition(() => {
-        if (typeof window !== "undefined") window.location.reload();
-      });
-    } else {
-      toast.error("Could not unlink wallet.");
-    }
-  };
-
-  const initials = address.slice(2, 4).toUpperCase();
+  // Embedded wallet auto-provisions on login — brief loading until it attaches.
+  if (!isConnected || !address) {
+    return (
+      <div
+        className="flex h-8 items-center gap-2 rounded-md border border-input bg-background px-2 text-xs text-muted-foreground sm:h-9 sm:px-3"
+        aria-label="Loading wallet"
+      >
+        <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
+        <span className="hidden sm:inline">Loading wallet…</span>
+      </div>
+    );
+  }
 
   return (
     <DropdownMenu>
@@ -134,10 +80,10 @@ function WalletStatusInner({ linkedAddress }: { linkedAddress: Address | null })
             className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
               isLinked
                 ? "bg-emerald-500/15 text-emerald-600"
-                : "bg-amber-500/15 text-amber-600"
+                : "bg-muted text-muted-foreground"
             }`}
           >
-            {isLinked ? <Check className="h-3 w-3" /> : initials}
+            {isLinked ? <Check className="h-3 w-3" /> : <Wallet className="h-3 w-3" />}
           </span>
           <span className="hidden sm:inline">{shortAddress}</span>
         </button>
@@ -153,43 +99,12 @@ function WalletStatusInner({ linkedAddress }: { linkedAddress: Address | null })
                 Linked to your account
               </p>
             ) : (
-              <p className="text-xs text-amber-600 mt-1">
-                Not yet linked to your account
+              <p className="text-xs text-muted-foreground mt-1">
+                Linking to your account…
               </p>
             )}
           </div>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {!isLinked ? (
-          <DropdownMenuItem
-            disabled={isLinking}
-            onClick={() => void handleLink()}
-            className="cursor-pointer"
-          >
-            {isLinking ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Link2 className="mr-2 h-4 w-4" />
-            )}
-            {isLinking ? "Signing…" : "Link to account"}
-          </DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem
-            disabled={isLinking}
-            onClick={() => void handleUnlink()}
-            className="cursor-pointer"
-          >
-            <Link2Off className="mr-2 h-4 w-4" />
-            Unlink
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuItem
-          className="cursor-pointer text-destructive focus:text-destructive"
-          onClick={() => disconnect()}
-        >
-          <LogOut className="mr-2 h-4 w-4" />
-          Disconnect wallet
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

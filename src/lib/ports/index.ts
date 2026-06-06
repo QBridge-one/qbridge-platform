@@ -11,7 +11,7 @@ export type { CompliancePort } from "./compliance.port";
 export type { IdentityPort } from "./identity.port";
 export type { OrganizationPort } from "./organization.port";
 export type { AuthWebhookPort } from "./auth-webhook.port";
-export type { WalletLinkPort } from "./wallet-link.port";
+export type { WalletBindingPort } from "./wallet-binding.port";
 export type { AuditLogPort } from "./audit-log.port";
 export type { NotificationPort } from "./notification.port";
 export type { EmailPort } from "./email.port";

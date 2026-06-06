@@ -1,15 +1,15 @@
 // ============================================================
 // lib/wagmi-config.ts
-// Wagmi config singleton for adapters (imperative actions outside React).
-// Chains match Web3Auth network: SAPPHIRE_DEVNET → sepolia, SAPPHIRE_MAINNET → mainnet + polygon.
+// Wagmi config singleton for server-side imperative reads (compliance
+// preflight, viem adapter) — NOT the wallet connector (that's the Privy
+// WagmiProvider in lib/privy-wagmi-config.ts). Chain selection mirrors
+// config/privy.ts: "mainnet" → ETH L1 + Polygon, else Sepolia.
 // ============================================================
 
 import { createConfig, http } from "@wagmi/core";
 import { mainnet, sepolia, polygon } from "@wagmi/core/chains";
 
-// Match config/web3auth.ts: mainnet env → SAPPHIRE_MAINNET, else SAPPHIRE_DEVNET
-const isMainnet =
-  process.env.NEXT_PUBLIC_WEB3AUTH_NETWORK === "mainnet";
+const isMainnet = process.env.NEXT_PUBLIC_PRIVY_NETWORK === "mainnet";
 
 const chains = isMainnet ? [mainnet, polygon] as const : [sepolia] as const;
 

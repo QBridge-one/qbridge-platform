@@ -281,6 +281,32 @@ export const platformSettings = pgTable("platform_settings", {
   updatedBy: text("updated_by").notNull(),
 });
 
+// ─── Wallet bindings (which wallet belongs to which user) ──────
+// Canonical record of a user's primary wallet. For Privy embedded
+// wallets the address is sourced authoritatively from a verified
+// Privy identity token (server-side) — no client-signed SIWE. One
+// row per user (their primary wallet). Reverse lookups by address
+// use the address index.
+
+export const walletBindings = pgTable(
+  "wallet_bindings",
+  {
+    /** Auth provider user id (Clerk userId). One binding per user. */
+    userId: text("user_id").primaryKey(),
+    /** Lowercased 0x… primary wallet address. */
+    address: text("address").notNull(),
+    /** Wallet provider that sourced this binding: "privy" | "web3auth". */
+    provider: text("provider").notNull(),
+    linkedAt: timestamp("linked_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("wallet_bindings_address_idx").on(t.address)],
+);
+
 // ─── Inferred row types (use in app/indexer code) ──────────────
 export type AccessManagerRow = typeof accessManagers.$inferSelect;
 export type NewAccessManager = typeof accessManagers.$inferInsert;
@@ -296,3 +322,5 @@ export type NotificationOutboxRow = typeof notificationOutbox.$inferSelect;
 export type NewNotificationOutbox = typeof notificationOutbox.$inferInsert;
 export type PlatformSettingRow = typeof platformSettings.$inferSelect;
 export type NewPlatformSetting = typeof platformSettings.$inferInsert;
+export type WalletBindingRow = typeof walletBindings.$inferSelect;
+export type NewWalletBinding = typeof walletBindings.$inferInsert;

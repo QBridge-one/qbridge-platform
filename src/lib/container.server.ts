@@ -41,8 +41,6 @@ import { memoryOrganizationAdapter } from "./adapters/organization/memory.adapte
 import { clerkOrganizationAdapter } from "./adapters/organization/clerk.adapter";
 import { memoryAuthWebhookAdapter } from "./adapters/auth-webhook/memory.adapter";
 import { clerkAuthWebhookAdapter } from "./adapters/auth-webhook/clerk.adapter";
-import { memoryWalletLinkAdapter } from "./adapters/wallet-link/memory.adapter";
-import { clerkWalletLinkAdapter } from "./adapters/wallet-link/clerk.adapter";
 import { memoryAuditLogAdapter } from "./adapters/audit-log/memory.adapter";
 import { drizzleAuditLogAdapter } from "./adapters/audit-log/drizzle.adapter";
 import { personaKybAdapter } from "./adapters/kyb-verification/persona.adapter";
@@ -85,13 +83,6 @@ export const IDENTITY_PROVIDER_RESOLVED = IDENTITY_PROVIDER as
   | "clerk"
   | string;
 
-// Wallet linking persists the SIWE-verified address into the same
-// store the IdentityPort reads `primaryWallet` from. Keep these
-// two in sync — if you swap identity providers, swap the matching
-// wallet-link adapter as well.
-export const walletLinkAdapter =
-  IDENTITY_PROVIDER === "clerk" ? clerkWalletLinkAdapter : memoryWalletLinkAdapter;
-
 // ─── Wallet provider switch ──────────────────────────────────
 // The wallet-link / audit / identity adapters above are vendor-
 // agnostic with respect to *which* embedded wallet a user has —
@@ -118,6 +109,13 @@ export const notificationAdapter = DB_BACKED
 export const platformSettingsAdapter = DB_BACKED
   ? drizzlePlatformSettingsAdapter
   : memoryPlatformSettingsAdapter;
+
+// Canonical user→wallet binding (Postgres when DATABASE_URL set, else
+// in-memory). The binding module owns its own DB_BACKED switch so the
+// Clerk identity / organization adapters can read it directly without a
+// circular import through this container. Re-exported here so route
+// handlers import it from the same place as the other server adapters.
+export { walletBindingAdapter } from "./adapters/wallet-binding";
 
 // ─── Email provider switch ───────────────────────────────────
 // EMAIL_PROVIDER  = "console" | "resend"   (default: "console")
@@ -213,7 +211,7 @@ export const kybVerificationAdapter = selectKybProvider();
 export type { IdentityPort } from "./ports/identity.port";
 export type { OrganizationPort } from "./ports/organization.port";
 export type { AuthWebhookPort } from "./ports/auth-webhook.port";
-export type { WalletLinkPort } from "./ports/wallet-link.port";
+export type { WalletBindingPort } from "./ports/wallet-binding.port";
 export type { AuditLogPort } from "./ports/audit-log.port";
 export type { NotificationPort } from "./ports/notification.port";
 export type { EmailPort } from "./ports/email.port";
