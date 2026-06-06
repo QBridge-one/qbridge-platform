@@ -43,8 +43,8 @@ Ports (interfaces)                      Adapters
   IdentityPort       ←   memory.adapter | clerk.adapter | workos.adapter
   OrganizationPort   ←   memory.adapter | clerk.adapter | workos.adapter
   AuthWebhookPort    ←   memory.adapter | clerk.adapter | workos.adapter
-  WalletLinkPort     ←   memory.adapter | (db-backed later)
-  AuditLogPort       ←   memory.adapter | (db-backed later)
+  WalletBindingPort  ←   memory.adapter | drizzle.adapter (Postgres)
+  AuditLogPort       ←   memory.adapter | drizzle.adapter (Postgres)
 ```
 
 | File                                                            | Purpose                                                |
@@ -53,7 +53,7 @@ Ports (interfaces)                      Adapters
 | `src/lib/ports/identity.port.ts`                                | `getSession`, `requireSession`                         |
 | `src/lib/ports/organization.port.ts`                            | `inviteMember`, `listMembers`, `updateMemberRole`, …   |
 | `src/lib/ports/auth-webhook.port.ts`                            | Verify + normalize IdP webhooks                        |
-| `src/lib/ports/wallet-link.port.ts`                             | Bind wallet → user via signed nonce                    |
+| `src/lib/ports/wallet-binding.port.ts`                          | Canonical user → wallet record (Postgres)              |
 | `src/lib/ports/audit-log.port.ts`                               | Append-only off-chain audit trail                      |
 | `src/lib/auth/permissions.ts`                                   | `can(role, perm)` — pure code policy                   |
 | `src/lib/auth/server.ts`                                        | Server-only: `requireSession/requireOrg/requirePermission` |
@@ -65,8 +65,7 @@ Ports (interfaces)                      Adapters
 | `src/app/api/team/invite/[id]/route.ts`                         | Revoke invite                                          |
 | `src/app/api/team/members/route.ts`                             | List members                                           |
 | `src/app/api/team/members/[userId]/route.ts`                    | Update role / remove                                   |
-| `src/app/api/wallet/nonce/route.ts`                             | Issue link challenge                                   |
-| `src/app/api/wallet/link/route.ts`                              | Verify signature, persist binding                      |
+| `src/app/api/wallet/bind/route.ts`                              | Verify Privy identity token, persist binding (Postgres)|
 | `src/app/api/webhooks/identity/route.ts`                        | IdP webhook receiver                                   |
 | `src/app/api/session/route.ts`                                  | Read current session for client UIs                    |
 
@@ -127,7 +126,7 @@ used and Clerk SDK calls are bypassed.
 | `/sign-up/[[...sign-up]]`             | Clerk hosted `<SignUp />`                     |
 | `/select-workspace`                   | Post-login org chooser; routes to plane      |
 | `/api/webhooks/identity`              | Clerk webhook receiver (svix-verified)        |
-| `/api/wallet/{nonce,link}`            | SIWE-style wallet linking                     |
+| `/api/wallet/bind`                    | Bind wallet from a verified Privy identity token |
 | `/api/team/...`, `/api/team/members*` | Invite / list / role / remove                 |
 | `/api/session`                        | Read current session for client UIs           |
 
@@ -144,12 +143,14 @@ used and Clerk SDK calls are bypassed.
 Users can switch active org via the `<OrganizationSwitcher>` rendered in the
 dashboard header (`components/dashboard/identity-controls.tsx`).
 
-### Recommended next: swap memory store for Postgres
+### Postgres-backed stores
 
-The `applyAuthEvent` service in `src/lib/services/identity-mirror.service.ts`
-is the only place that writes user/org/membership state from webhooks; swap
-its calls to DB writes via Prisma or Drizzle. `WalletLinkPort` and
-`AuditLogPort` should follow the same pattern.
+`WalletBindingPort` and `AuditLogPort` are already **Drizzle/Postgres-backed**
+when `DATABASE_URL` is set (in-memory fallback otherwise). The remaining
+in-memory store is the IdP mirror: `applyAuthEvent` in
+`src/lib/services/identity-mirror.service.ts` writes user/org/membership state
+from Clerk webhooks into a process-local store — swap those calls to DB writes
+to make it durable too.
 
 ## Switching to WorkOS later
 
@@ -171,18 +172,23 @@ export const identityAdapter =
 
 Nothing in `app/`, `components/`, `lib/services/`, or `lib/auth/` changes.
 
-## Wallet linking
+## Wallet binding
 
-A signed-nonce flow (SIWE-style) binds a wallet address to the
-authenticated user:
+The user's wallet is Privy's embedded MPC wallet. It is bound to the Clerk
+user **automatically and server-side** — no signed message, no popup:
 
-1. Client calls `POST /api/wallet/nonce` (uses session user).
-2. Server returns `{ nonce, message, expiresAt }`.
-3. Client signs `message` via wagmi's `useSignMessage` (see `useWalletLink`).
-4. Client posts `{ address, signature, nonce }` to `POST /api/wallet/link`.
-5. Server verifies via `viem.verifyMessage` and persists.
+1. On login, Privy provisions the embedded wallet (`createOnLogin`).
+2. `<PrivyAutoBind>` posts the Privy **identity token** (`useIdentityToken()`)
+   to `POST /api/wallet/bind`.
+3. The route authenticates the Clerk user (`requireSession()`) and verifies the
+   token with `@privy-io/server-auth` `getUser({ idToken })`, extracting the
+   embedded wallet address from the **verified** linked accounts.
+4. The address is written to the Postgres `wallet_bindings` table via
+   `WalletBindingPort`, and a `wallet.linked` audit entry is appended.
 
-UI hook: `useWalletLink()` in `src/lib/hooks/useWalletLink.ts`.
+`primaryWallet` is then read from the binding store (Clerk metadata is only a
+legacy fallback). See `Docs/WALLET-PROVIDER.md` for the full wallet
+architecture. UI hook: `useWalletBind()` in `src/lib/hooks/useWalletBind.ts`.
 
 ## Permissions
 

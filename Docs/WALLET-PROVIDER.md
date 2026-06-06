@@ -1,289 +1,224 @@
 # QBridge — Wallet Provider Architecture
 
-This document explains the current wallet stack (Web3Auth), why it is separated
-from the identity layer (Clerk), and exactly what to change to swap Web3Auth
-for **Turnkey** or **Alchemy Account Kit** later.
+This document explains the current wallet stack (**Privy**), how it is kept
+separate from the identity layer (**Clerk**), how a user's wallet is bound to
+their account (**Postgres**, server-side, no signature), and what would change
+to swap Privy for another provider later.
+
+> History: QBridge originally used **Web3Auth** as the embedded-wallet provider
+> with a client-side SIWE flow that wrote the wallet into Clerk
+> `publicMetadata`. That has been fully removed in favour of Privy + a
+> Postgres-backed binding. If you are reading old commits/comments that mention
+> Web3Auth or `/api/wallet/{nonce,link}`, this doc is the current truth.
 
 ## Mental model
 
 QBridge has two independent layers. Treat them as completely separate concerns:
 
-| Layer    | Source of truth        | What it answers                                |
-| -------- | ---------------------- | ---------------------------------------------- |
-| Identity | Clerk (`IdentityPort`) | Who is the user? What organization? What role? |
-| Wallet   | `WalletPort` adapter   | Which key signs? What address? Send a tx.      |
+| Layer    | Source of truth                | What it answers                                |
+| -------- | ------------------------------ | ---------------------------------------------- |
+| Identity | Clerk (`IdentityPort`)         | Who is the user? What organization? What role? |
+| Wallet   | Privy via `WalletPort` adapter | Which key signs? What address? Send a tx.      |
 
-The user has **one Clerk account** across the platform. The wallet is an
-in-app, per-user concern that is provisioned and bound to the Clerk identity
-via SIWE — not a second login.
+The user has **one Clerk account** across the platform. **Clerk is the only
+login.** The wallet is an embedded, per-user concern that Privy provisions and
+binds to the Clerk identity automatically — it is never a second login.
 
-## What we did with Web3Auth (the refactor)
+## How a user gets a wallet (the flow)
 
-Originally the landing-page "Login" button opened the Web3Auth modal, then
-redirected to `/workspace`, which then forced a Clerk sign-in. Two auth
-screens for one user. Web3Auth was acting as both an auth provider and a
-wallet provider, which conflicts with Clerk owning identity.
+1. **User signs in with Clerk** (`/sign-in`). No wallet UI, no Privy modal.
+2. **Privy authenticates from the Clerk session JWT** ("custom" / JWT-based
+   auth). Privy verifies the Clerk token and, for that user, provisions one
+   **embedded MPC wallet** (`createOnLogin: "users-without-wallets"`).
+   No second login screen.
+3. **The wallet surfaces as a wagmi connector** (`@privy-io/wagmi`), so the
+   rest of the app reads `address` / `chainId` and signs through wagmi exactly
+   as before. `<PrivyWalletStateSync>` promotes the embedded wallet to wagmi's
+   active account.
+4. **The wallet is auto-bound to the user.** `<PrivyAutoBind>` posts the Privy
+   **identity token** to `POST /api/wallet/bind`; the server verifies it and
+   records the address (see next section). No user signature, no popup.
+5. **Signing is silent.** `embeddedWallets.showWalletUIs: false` — QBridge owns
+   the transaction-confirmation UX; Privy does not pop its own dialogs.
 
-The refactor enforces a clean split:
+The dashboard `WalletStatus` component is therefore **display-only**: a brief
+"Loading wallet…" then the address with a "Linked" indicator.
 
-1. **Clerk is the only login.** The landing-page CTA points at `/sign-in` /
-   `/sign-up` (Clerk) and at `/select-workspace` for signed-in users. There
-   is no Web3Auth call on `/`.
-2. **Web3Auth is the embedded-wallet provider only.** Inside `/workspace`
-   and `/ops`, a `WalletStatus` component lets the user click **Connect
-   wallet**, opens the Web3Auth modal, and shows the address in the header.
-3. **SIWE binds the wallet to the Clerk user.** After connecting, the user
-   can click **Link to account**: `useWalletLink` issues a nonce, the wallet
-   signs it, the server verifies via `viem.verifyMessage`, and writes the
-   address into Clerk `publicMetadata.primaryWallet`. The binding now
-   survives across browsers, devices, and server restarts.
-4. **Single sign-out.** `WalletAutoDisconnect` listens for Clerk's
-   `useUser().isSignedIn` to flip false and disconnects the embedded wallet
-   in the same step. One logout, both states cleared.
-5. **Provider switches** in env make the wallet swappable without touching
-   feature code (see "Replaceability" below).
+## The wallet ↔ user binding (system of record)
+
+The canonical "which wallet belongs to which user" record lives in **our
+Postgres** (`wallet_bindings` table) — **not** in Clerk `publicMetadata`, and
+**not** via a client-signed SIWE message.
+
+How a binding is established (authoritative, server-side):
+
+1. Client has the Privy **identity token** (`useIdentityToken()` /
+   `privy-id-token` cookie) — a Privy-signed JWT containing the user's linked
+   accounts (including the embedded wallet address).
+2. `<PrivyAutoBind>` posts it to `POST /api/wallet/bind`.
+3. The route is authenticated as a Clerk user (`requireSession()`), and the
+   wallet address comes from the **verified** token, not a client claim:
+   `@privy-io/server-auth` `PrivyClient.getUser({ idToken })` verifies the
+   signature and parses linked accounts locally (no API call).
+4. The address is written to `wallet_bindings` via `WalletBindingPort.upsert`,
+   and an `wallet.linked` audit entry is appended.
+
+**Trust chain:** Clerk session proves *who*; the Privy-signed identity token
+proves *which wallet*. Neither is a client-supplied claim. Because Privy
+already provisioned the wallet for this Clerk user, no SIWE proof is needed.
+
+### How `primaryWallet` is read
+
+`IdentityPort.getSession()` / `getUser()` and `OrganizationPort.listMembers()`
+resolve `primaryWallet` / `walletAddress` from the **binding store first**,
+falling back to Clerk `publicMetadata` only as a transitional/legacy path. The
+identity reads are wrapped so a binding-store outage degrades gracefully rather
+than breaking auth. Everything downstream (on-chain issuer registration, role
+grants, team views) reads these unchanged.
 
 ## Architecture: ports & adapters
 
-The relevant ports are already defined and adapter-agnostic:
+| Port                | File                                       | What it abstracts                    |
+| ------------------- | ------------------------------------------ | ------------------------------------ |
+| `IdentityPort`      | `src/lib/ports/identity.port.ts`           | Current user, active org             |
+| `OrganizationPort`  | `src/lib/ports/organization.port.ts`       | Members, invites                     |
+| `WalletPort`        | `src/lib/ports/wallet.port.ts`             | Connect, sign, sendTx                |
+| `WalletBindingPort` | `src/lib/ports/wallet-binding.port.ts`     | Canonical user → wallet record (DB)  |
 
-| Port                | File                                    | What it abstracts          |
-| ------------------- | --------------------------------------- | -------------------------- |
-| `IdentityPort`      | `src/lib/ports/identity.port.ts`        | Current user, active org   |
-| `OrganizationPort`  | `src/lib/ports/organization.port.ts`    | Members, invites           |
-| `WalletPort`        | `src/lib/ports/wallet.port.ts`          | Connect, sign, sendTx      |
-| `WalletLinkPort`    | `src/lib/ports/wallet-link.port.ts`     | SIWE nonce + verify + bind |
-
-Active adapters live behind two env switches:
+Active provider is selected by env (defaults to `privy`):
 
 ```
-IDENTITY_PROVIDER         = memory | clerk           # server (.env)
-NEXT_PUBLIC_WALLET_PROVIDER = web3auth | alchemy | turnkey   # client + server
+IDENTITY_PROVIDER           = memory | clerk          # server (.env)
+NEXT_PUBLIC_WALLET_PROVIDER = privy                   # client + server
 ```
 
 Wired in:
 
-- `src/lib/container.server.ts` — server-only (identity, org, wallet-link, …)
+- `src/lib/container.server.ts` — server-only (identity, org, wallet-binding, …)
 - `src/lib/container.ts`        — client-safe (wallet, blockchain, services)
 
-The single client-side hook every component uses is:
+The single client-side wallet hook every component uses is:
 
 ```ts
 // src/lib/hooks/useWallet.ts
-export const useWallet: () => UseWalletReturn = isWeb3AuthConfigured
-  ? useWalletWeb3Auth
+export const useWallet: () => UseWalletReturn = isPrivyConfigured
+  ? useWalletPrivy
   : useWalletStub;
 ```
 
-This is the **only** file in the app that imports `@web3auth/modal/react`.
-When you swap providers, this is the only client-side hook file you change.
+This is the **only** file in the app that imports `@privy-io/react-auth`
+hooks. When you swap providers, this is the only client-side hook file you
+change.
 
-## Files involved in the wallet provider boundary
+## Files involved in the wallet boundary
 
-| Concern                   | File                                                       |
-| ------------------------- | ---------------------------------------------------------- |
-| Wallet adapter (server)   | `src/lib/adapters/wallet/web3auth.adapter.ts`              |
-| Wallet adapter (stub AA)  | `src/lib/adapters/wallet/alchemy.adapter.ts`               |
-| Provider tree (client)    | `src/components/providers/web3auth-providers.tsx`          |
-| State sync into adapter   | `src/components/providers/wallet-state-sync.tsx`           |
-| Auto-disconnect on logout | `src/components/providers/wallet-auto-disconnect.tsx`      |
-| Domain-level hook         | `src/lib/hooks/useWallet.ts`                               |
-| SIWE link hook            | `src/lib/hooks/useWalletLink.ts`                           |
-| SIWE link adapter (Clerk) | `src/lib/adapters/wallet-link/clerk.adapter.ts`            |
-| Dashboard wallet UI       | `src/components/wallet/wallet-status.tsx`                  |
-| API: nonce / link / unlink| `src/app/api/wallet/{nonce,link}/route.ts`                 |
+| Concern                          | File                                                       |
+| -------------------------------- | ---------------------------------------------------------- |
+| Wallet adapter (`WalletPort`)    | `src/lib/adapters/wallet/privy.adapter.ts`                 |
+| Privy static config              | `src/config/privy.ts`                                      |
+| Privy wagmi config               | `src/lib/privy-wagmi-config.ts`                            |
+| Provider tree (client)           | `src/components/providers/privy-providers.tsx`             |
+| Wagmi state → adapter + active   | `src/components/providers/privy-wallet-state-sync.tsx`     |
+| Auto-bind on login               | `src/components/providers/privy-auto-bind.tsx`             |
+| Auto-disconnect on Clerk logout  | `src/components/providers/wallet-auto-disconnect.tsx`      |
+| Provider mount point             | `src/components/providers/wallet-providers.tsx`            |
+| Domain-level hook                | `src/lib/hooks/useWallet.ts`                               |
+| Bind hook (posts identity token) | `src/lib/hooks/useWalletBind.ts`                           |
+| Binding port                     | `src/lib/ports/wallet-binding.port.ts`                     |
+| Binding adapters (drizzle/memory)| `src/lib/adapters/wallet-binding/`                         |
+| Identity-token verifier (server) | `src/lib/adapters/wallet-binding/privy-identity.ts`        |
+| Dashboard wallet UI              | `src/components/wallet/wallet-status.tsx`                  |
+| API: bind                        | `src/app/api/wallet/bind/route.ts`                         |
+| DB table + migration             | `wallet_bindings` in `src/lib/db/schema.ts` (mig. `0003`)  |
 
-## Key-custody quick note
+## Provider tree
 
-Prefer **MPC** over **TEE** for key custody. TEE-based custody (Intel SGX,
-AMD SEV, etc.) has a track record of side-channel attacks and is a single
-hardware trust assumption. MPC splits the key across parties so no single
-party — or single compromise — exposes the full key. For QBridge's
-institutional posture, MPC (Web3Auth Sapphire, Coinbase WaaS) or HSM-backed
-signers (Turnkey) are the safer defaults; TEE-only providers should be
-last resort.
+```
+PrivyProvider (config from src/config/privy.ts; customAuth → Clerk getToken)
+└─ QueryClientProvider
+   └─ WagmiProvider (config from @privy-io/wagmi)
+      ├─ <PrivyWalletStateSync/>   inject wagmi config + set active wallet
+      ├─ <PrivyAutoBind/>          post identity token → /api/wallet/bind
+      └─ <WalletAutoDisconnect/>   Privy logout on Clerk sign-out
+```
 
-## Replaceability: swap path
+`createConfig` and `WagmiProvider` **must** come from `@privy-io/wagmi` (not
+`wagmi` directly) — the wrapper sets `reconnectOnMount: false`, required for
+the embedded wallet to surface as a connector.
 
-Swapping providers is a config change, not a refactor. Anything *outside*
-the table above stays untouched.
+## Key-custody note
 
-### Path A — Migrate to Turnkey (HSM-backed signer)
+Privy embedded wallets are **MPC** — the key is split across parties, so no
+single party (or single compromise) exposes the full key. Prefer MPC or
+HSM-backed signers (Turnkey) over TEE-only custody. For QBridge's institutional
+posture, MPC is an acceptable default.
 
-Turnkey is server-side: no modal, no wallet popup. Keys are HSM-managed and
-provisioned on demand for each Clerk user. Signing is an API call.
+## Dependency & runtime notes
 
-1. **Install + configure Turnkey**
-   ```
-   npm install @turnkey/sdk-server @turnkey/sdk-browser @turnkey/http
-   ```
-   Add to `.env`:
-   ```
-   TURNKEY_API_PUBLIC_KEY=...
-   TURNKEY_API_PRIVATE_KEY=...
-   TURNKEY_ORGANIZATION_ID=...
-   NEXT_PUBLIC_WALLET_PROVIDER=turnkey
-   ```
+These exist because of Privy's dependency tree and are **not** Web3Auth
+leftovers — keep them:
 
-2. **Implement `TurnkeyAdapter`** in
-   `src/lib/adapters/wallet/turnkey.adapter.ts`. Implement `WalletPort`:
-   - `connect()`: ensures a Turnkey wallet exists for the current Clerk
-     user (idempotent). Reads the address, returns. No UI prompt.
-   - `getAddress()` / `getChainId()`: trivial — read from the Turnkey
-     wallet record.
-   - `signMessage` / `signTypedData` / `sendTransaction`: call Turnkey's
-     `signRawPayload` / `signTransaction` API; broadcast via `viemAdapter`.
-   - `getSmartAccountConfig()`: return `null` (Turnkey signers are EOAs),
-     **unless** you compose Turnkey + Alchemy/ZeroDev (see Path B-bis).
+- **`engines.node >= 20.19.0`** (`.nvmrc` = `22`). Privy's crypto deps require
+  it; lower Node fails to install/run.
+- **`@wagmi/core` pinned to `3.4.0`** as a direct dependency — matches
+  `wagmi@3.5.0`'s core and keeps a single top-level version (Privy's nested
+  tree otherwise hoists a conflicting `@wagmi/core@2.x`).
+- **`resolutions.viem = "2.52.0"`** — Privy peers an exact viem; this dedupes
+  the 4+ copies Privy's tree would otherwise pull. Verified: 0 nested viem
+  copies.
 
-3. **Add the Turnkey branch to `useWallet.ts`**:
-   ```ts
-   function useWalletTurnkey(): UseWalletReturn {
-     // Calls a server route that ensures a Turnkey wallet exists,
-     // returns address, exposes signMessage via /api/wallet/sign.
-   }
+`src/lib/wagmi-config.ts` is **kept** (separate from the Privy connector
+config): it's the `@wagmi/core` singleton used by server-side imperative reads
+(compliance preflight, viem adapter). It is not the wallet connector.
 
-   const PROVIDER = process.env.NEXT_PUBLIC_WALLET_PROVIDER ?? "web3auth";
-   export const useWallet: () => UseWalletReturn =
-     PROVIDER === "turnkey" ? useWalletTurnkey
-     : isWeb3AuthConfigured  ? useWalletWeb3Auth
-     :                          useWalletStub;
-   ```
+## Deploy checklist
 
-4. **Replace the wallet provider tree.** Turnkey doesn't need WagmiProvider
-   for connection. Replace `<Web3AuthProviders>` in `app/layout.tsx` with a
-   thin `<TurnkeyProvider>` (or simply drop the wallet provider wrapper —
-   Turnkey is invisible). Keep `<WalletAutoDisconnect>` if you wire its
-   internals to the Turnkey hook (or drop it; Turnkey has no client session
-   to clear).
+In your hosting env (Vercel) and the indexer worker env:
 
-5. **Update the wallet-link adapter.** No change needed — Turnkey produces
-   EIP-191 signatures that `viem.verifyMessage` already verifies.
-   `clerkWalletLinkAdapter` continues to write
-   `publicMetadata.primaryWallet`.
+```env
+NEXT_PUBLIC_WALLET_PROVIDER=privy
+NEXT_PUBLIC_PRIVY_APP_ID=...        # public
+PRIVY_APP_SECRET=privy_...          # SERVER-ONLY, never NEXT_PUBLIC
+# optional: NEXT_PUBLIC_PRIVY_NETWORK=mainnet   # else Sepolia
+```
 
-6. **Toggle `NEXT_PUBLIC_WALLET_PROVIDER=turnkey`**, restart, done. UI,
-   routes, RBAC, audit log, gas policy — none of it changes.
+Privy dashboard:
 
-**What you trade**: lose the social-login UX (Turnkey is a backend signer,
-the user authenticates through Clerk only). Gain HSM-grade key custody, no
-third-party MPC trust assumption, audit-friendly key lifecycle.
+- **User management → Authentication → JWT-based auth**: add your Clerk JWKS URL
+  (`https://<clerk-frontend-api>/.well-known/jwks.json`), ID claim `sub`, `aud`
+  empty, Client-side enabled.
+- **User management → Authentication → Advanced**: enable **"Return user data in
+  an identity token"** (otherwise `useIdentityToken()` is null and binding
+  never fires).
 
-### Path B — Migrate to Alchemy Account Kit (smart accounts)
+Database: apply migration `0003` (`wallet_bindings`) to the production DB —
+migrations are **not** auto-run on deploy (`build` is just `next build`):
 
-Alchemy gives you ERC-4337 smart accounts: gas sponsorship, batched tx,
-session keys, programmable signers. The signer can be a passkey on the
-user's device (no third-party custody at all).
+```
+DATABASE_URL="<prod-url>" yarn db:migrate
+```
 
-1. **Install + configure**
-   ```
-   npm install @account-kit/core @account-kit/react @account-kit/infra
-   ```
-   Add to `.env`:
-   ```
-   NEXT_PUBLIC_ALCHEMY_API_KEY=...
-   ALCHEMY_GAS_POLICY_ID=...
-   NEXT_PUBLIC_WALLET_PROVIDER=alchemy
-   ```
+## Replaceability: swapping Privy later
 
-2. **Fill in the existing `AlchemyAdapter` stub** at
-   `src/lib/adapters/wallet/alchemy.adapter.ts` (TODOs are already in place).
-   Use the smart-account client to:
-   - `connect()`: derive smart account from the chosen signer (passkey,
-     email-OTP, or Alchemy Signer). Counterfactual address available
-     immediately.
-   - `sendTransaction()`: build a `UserOperation`, send through the
-     bundler. Gas sponsorship applies automatically when
-     `ALCHEMY_GAS_POLICY_ID` is set.
-   - `getSmartAccountConfig()`: return `{ enabled: true, ... }` — already
-     done in the stub.
+The port boundary makes a future swap a config + adapter change, not a refactor.
 
-3. **Add the Alchemy branch to `useWallet.ts`**:
-   ```ts
-   function useWalletAlchemy(): UseWalletReturn {
-     // Use @account-kit/react hooks (useSmartAccountClient, etc.)
-   }
-   ```
-   Update the export switch as in Path A.
+1. Implement the new adapter under `src/lib/adapters/wallet/` (`WalletPort`).
+   An `alchemy.adapter.ts` stub exists for ERC-4337 smart accounts.
+2. Add a branch in `src/lib/hooks/useWallet.ts` and `pickWalletAdapter()` in
+   `src/lib/container.ts`, gated on `NEXT_PUBLIC_WALLET_PROVIDER`.
+3. Mount the provider's React tree in `src/components/providers/` and select it
+   in `wallet-providers.tsx`.
+4. The binding mechanism is provider-specific: Privy uses a verified identity
+   token. A different provider would supply its own authoritative source (its
+   own token, a webhook, or a backend lookup) feeding `WalletBindingPort`.
 
-4. **Mount Alchemy's React provider.** Add
-   `src/components/providers/alchemy-providers.tsx` wrapping the
-   `<AlchemyAccountProvider>` tree, and pick which to mount in
-   `app/layout.tsx` based on `NEXT_PUBLIC_WALLET_PROVIDER`.
-
-5. **Update the wallet-link verifier**.
-   Smart accounts often sign via ERC-1271 (contract signatures), not
-   EIP-191. Update `verifyAndLink` in
-   `src/lib/adapters/wallet-link/clerk.adapter.ts` to use viem's public
-   client `publicClient.verifyMessage(...)` instead of the standalone
-   `verifyMessage`. The public-client variant auto-dispatches to ERC-1271
-   for contract accounts. This is flagged in a comment at the top of the
-   file.
-
-6. **(Optional) Swap the gas-policy adapter** in `container.ts` from
-   `noSponsorshipAdapter` to `alchemyGasManagerAdapter` so on-chain calls
-   pull gas from your Paymaster.
-
-7. **Toggle `NEXT_PUBLIC_WALLET_PROVIDER=alchemy`**, restart, done.
-
-**What you gain**: smart-account features (sponsored gas, batched tx,
-spending limits, session keys, recovery via guardians), passkey signers,
-no third-party key custody. **What it costs**: more engineering, AA
-primitives to think in, per-UserOp fees.
-
-### Path B-bis — Turnkey signer + Alchemy smart account
-
-These are not mutually exclusive. The "best institutional" stack is
-Turnkey-as-signer + Alchemy-as-smart-account: keys in HSMs, smart-account
-features on top. In code, this means a `TurnkeyAlchemyAdapter` whose owner
-signer for the smart account is the Turnkey API. `WalletPort` doesn't need
-to know — it just sees a smart account that can sign.
-
-## What never changes during a swap
-
-These are the abstractions that absorb the swap:
-
-- `IdentityPort` (Clerk) — independent of wallet provider.
-- `WalletLinkPort` interface — SIWE / signed-message proof works for any
-  signer. Only the verifier (EIP-191 vs ERC-1271) may need to change.
-- `useWallet()` shape — `UseWalletReturn` is the stable contract. Every
-  component reads `address`, `isConnected`, `connect`, `disconnect`,
-  `shortAddress` from it.
-- All `/api/team/**`, `/api/wallet/**` routes — they go through
-  `IdentityPort` and `WalletLinkPort`.
-- All RBAC, all `IdentityControls`, all `OrganizationSwitcher` flows.
-- All on-chain hooks under `src/lib/generated/**` — they use
-  `useChainId` / `useReadContract` from wagmi which works against any
-  wagmi-compatible adapter; for non-wagmi adapters, the codegen template
-  reads from `WalletPort` instead.
-- `WalletAutoDisconnect` — provider-agnostic via `useWallet().disconnect`.
-
-## Quick reference: where is "the swap point"?
-
-| Kind          | File                                                    | Lines you touch |
-| ------------- | ------------------------------------------------------- | --------------- |
-| Server pick   | `src/lib/container.server.ts`                           | `WALLET_PROVIDER` switch |
-| Client pick   | `src/lib/container.ts`                                  | `pickWalletAdapter()` switch |
-| Hook pick     | `src/lib/hooks/useWallet.ts`                            | `export const useWallet = ...` |
-| Provider tree | `src/components/providers/<provider>-providers.tsx`     | new file or replace |
-| Env           | `.env`                                                  | `NEXT_PUBLIC_WALLET_PROVIDER=...` |
-
-## Operational notes
-
-- **Web3Auth Dashboard** must whitelist your origins (e.g.
-  `http://localhost:3000`, prod domain) under Whitelisted Domains.
-- **Sapphire network** must match the Client ID's network. The codebase
-  defaults to `SAPPHIRE_DEVNET` unless `NEXT_PUBLIC_WEB3AUTH_NETWORK=mainnet`.
-- **`NEXT_PUBLIC_APP_URL`** should be set explicitly (`http://localhost:3000`
-  in dev) so server-issued invitations have a deterministic redirect URL
-  pointing at `/select-workspace`.
-- **Audit log entries** for wallet linking (`wallet.linked`,
-  `wallet.unlinked`) currently use the in-memory adapter. Swap to a DB
-  adapter for production — this is unrelated to the wallet provider swap.
+What never changes: `IdentityPort` (Clerk), the `UseWalletReturn` shape, the
+`/api/team/**` and on-chain RBAC flows, and how `primaryWallet` is consumed.
 
 ## TL;DR
 
-Web3Auth is the **wallet** today. Clerk is the **identity** today and
-forever. To swap to Turnkey or Alchemy, change the env var, drop in an
-adapter that implements `WalletPort`, add a branch in `useWallet`, and
-swap the React provider tree. Nothing else in the app needs to know.
+Privy is the **wallet** today; Clerk is the **identity** today and forever. The
+wallet auto-provisions on Clerk login (no second login, no signature), and the
+user → wallet binding is recorded in **our Postgres** from a verified Privy
+identity token. To swap providers, change the env + drop in a `WalletPort`
+adapter + a provider tree; nothing else needs to know.

@@ -31,7 +31,7 @@ The "trigger" is always **inside QBridge** (ops action in the UI, issuer submitt
 | **Resend** | Transactional email API. Sends platform notifications. | Optional (defaults to `console` adapter that just logs) | Yes |
 | **Zoho** | Mailbox host for `contact@qbridge.one`. Used only by `/api/contact` (marketing form). **Not** the platform notification path. | Optional | Yes |
 | **Namecheap** | DNS provider for `qbridge.one`. Holds Resend's DKIM/SPF records on the `mail.` subdomain. | n/a | Yes |
-| **Web3Auth** | Embedded wallet provider for issuer + investor sign-in. Unrelated to notifications. | Yes | Yes |
+| **Privy** | Embedded MPC wallet provider (Clerk stays the login). Unrelated to notifications. | Yes | Yes |
 
 ---
 
@@ -202,8 +202,9 @@ EMAIL_PROVIDER=console                                 # logs sends to terminal,
 CRON_SECRET=any_long_random_string
 
 # Wallet provider (not notification-related)
-NEXT_PUBLIC_WALLET_PROVIDER=web3auth
-NEXT_PUBLIC_WEB3AUTH_CLIENT_ID=...
+NEXT_PUBLIC_WALLET_PROVIDER=privy
+NEXT_PUBLIC_PRIVY_APP_ID=...
+PRIVY_APP_SECRET=privy_...
 ```
 
 ### 6.3 Set up your ops org in Clerk
@@ -267,8 +268,9 @@ EMAIL_FROM="QBridge <notifications@mail.qbridge.one>"
 CRON_SECRET=any_long_random_string
 
 # Wallet
-NEXT_PUBLIC_WALLET_PROVIDER=web3auth
-NEXT_PUBLIC_WEB3AUTH_CLIENT_ID=...
+NEXT_PUBLIC_WALLET_PROVIDER=privy
+NEXT_PUBLIC_PRIVY_APP_ID=...
+PRIVY_APP_SECRET=privy_...
 
 NEXT_PUBLIC_APP_URL=https://qbridge.one
 ```
@@ -339,7 +341,7 @@ Leave the apex `qbridge.one` records alone — they're Zoho's.
 | `CRON_SECRET` | `/api/cron/drain-emails` route guard | Optional (only for manual drain) | Optional but recommended |
 | `NEXT_PUBLIC_APP_URL` | Invite redirect URL | Optional | Recommended |
 | `NEXT_PUBLIC_WALLET_PROVIDER` | Wallet adapter | Yes | Yes |
-| `NEXT_PUBLIC_WEB3AUTH_CLIENT_ID` | Web3Auth | Yes | Yes |
+| `NEXT_PUBLIC_PRIVY_APP_ID` / `PRIVY_APP_SECRET` | Privy wallet | Yes | Yes |
 | `NEXT_PUBLIC_SEPOLIA_RPC_URL` | Indexer + transaction service | Only when running indexer | Yes (Railway) |
 
 ---

@@ -60,7 +60,7 @@ A resubmitted application with different fields produces a **new** hash.
 
 ### `wallet` (`address`)
 
-- The **issuer admin’s** linked wallet: first **active** org member with `issuer_admin` in `appRoles` and non-null `walletAddress` (`primaryWallet` from SIWE link).
+- The **issuer admin’s** wallet: first **active** org member with `issuer_admin` in `appRoles` and non-null `walletAddress` (`primaryWallet` from the Privy binding store).
 - **Not** the ops reviewer’s wallet — ops signs the tx; issuer wallet is the `registerIssuer` argument.
 
 ---
@@ -69,7 +69,7 @@ A resubmitted application with different fields produces a **new** hash.
 
 | Action | Signer | Contract check |
 |--------|--------|----------------|
-| `registerIssuer` | Ops reviewer (connected Web3Auth wallet) | `PlatformAccessManager` on registry `authority` |
+| `registerIssuer` | Ops reviewer (Privy embedded wallet) | `PlatformAccessManager` on registry `authority` |
 | `suspendIssuer` / `revokeIssuer` / … | Same pattern | Access-managed |
 
 ---
