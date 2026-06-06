@@ -25,8 +25,21 @@ const isMainnet = process.env.NEXT_PUBLIC_PRIVY_NETWORK === "mainnet";
 export const privyAppId = appId ?? "";
 
 /** True once NEXT_PUBLIC_PRIVY_APP_ID is set. Gates the provider tree
- *  exactly like `isWeb3AuthConfigured` does for Web3Auth. */
+ *  exactly like `isWeb3AuthConfigured` did for Web3Auth. */
 export const isPrivyConfigured = Boolean(appId);
+
+/** Opt in to Privy native gas sponsorship for on-chain sends (passes
+ *  `sponsor: true`).
+ *
+ *  OFF by default: sponsorship spends the app's funds, so Privy requires
+ *  SERVER-SIDE authorization with the app secret — a pure client-side
+ *  `sponsor: true` errors with "App secret is required for gas sponsored
+ *  transactions." Enabling this needs the server-side sponsorship path
+ *  wired up first (Privy server SDK + dashboard authorization keys); only
+ *  then set NEXT_PUBLIC_PRIVY_SPONSOR_GAS=true. Until then the wallet pays
+ *  its own gas (and the confirmation modal still shows). */
+export const privySponsorGas =
+  (process.env.NEXT_PUBLIC_PRIVY_SPONSOR_GAS ?? "false").toLowerCase() === "true";
 
 /**
  * Static Privy client config (everything except `customAuth`, which is

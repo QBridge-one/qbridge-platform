@@ -47,11 +47,15 @@ export interface TransactionRequest {
   data?: Hex;
   value?: bigint;
   chainId?: ChainId;
-  // ERC-4337 / smart account fields (ignored by Web3Auth adapter)
+  // ERC-4337 / smart account fields (ignored by EOA adapters)
   paymasterData?: Hex;
   callGasLimit?: bigint;
   verificationGasLimit?: bigint;
   preVerificationGas?: bigint;
+  // Optional human-facing confirmation for the wallet's pre-sign prompt.
+  // Set by the transaction service for on-chain writes; the wallet adapter
+  // maps it to a provider confirmation UI (e.g. Privy uiOptions).
+  confirmation?: { description?: string };
 }
 
 export type TransactionStatus =

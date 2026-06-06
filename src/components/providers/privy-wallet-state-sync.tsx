@@ -3,38 +3,39 @@
 // ============================================================
 // components/providers/privy-wallet-state-sync.tsx
 //
-// Privy analogue of wallet-state-sync.tsx. Must live inside the
-// <WagmiProvider> in privy-providers.tsx.
+// Bridges Privy/wagmi state into the PrivyWalletAdapter. Must live
+// inside the <WagmiProvider> in privy-providers.tsx.
 //
-// Two jobs:
-//   1. Inject the WagmiProvider config into the PrivyWalletAdapter so
-//      wagmi core actions (sendTransaction, etc.) use the embedded-wallet
-//      connector. Without this → "Connector not connected".
-//   2. Once the user is authenticated (via Clerk JWT) and the embedded
-//      wallet exists, set it as the active wagmi wallet so useAccount()
-//      and the core actions resolve to it. The wallet is created by
-//      Privy's createOnLogin — there is no connect modal.
+// Three jobs:
+//   1. Promote the embedded wallet to wagmi's active account so
+//      useAccount() (and the app's reads) resolve to it.
+//   2. Inject the embedded wallet's EIP-1193 provider into the adapter
+//      so signing / sending go through the Privy wallet (MPC), not a
+//      read-only RPC transport. See privy.adapter.ts.
+//   3. Mirror wagmi's reactive state (address/chain/connected) into the
+//      adapter for getAddress()/isReady().
 // ============================================================
 
 import { useEffect } from "react";
-import { useAccount, useChainId, useConfig } from "wagmi";
-import { usePrivy, useWallets, getEmbeddedConnectedWallet } from "@privy-io/react-auth";
+import { useAccount, useChainId } from "wagmi";
+import {
+  usePrivy,
+  useWallets,
+  useSendTransaction,
+  getEmbeddedConnectedWallet,
+} from "@privy-io/react-auth";
 import { useSetActiveWallet } from "@privy-io/wagmi";
 import { privyAdapter } from "@/lib/container";
 
 export function PrivyWalletStateSync() {
-  const config = useConfig();
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { ready, authenticated } = usePrivy();
   const { wallets } = useWallets();
   const { setActiveWallet } = useSetActiveWallet();
+  const { sendTransaction } = useSendTransaction();
 
-  useEffect(() => {
-    privyAdapter.setWagmiConfig(config);
-  }, [config]);
-
-  // Promote the embedded wallet to wagmi's active account once it exists.
+  // 1. Promote the embedded wallet to wagmi's active account.
   useEffect(() => {
     if (!ready || !authenticated) return;
     const embedded = getEmbeddedConnectedWallet(wallets);
@@ -43,6 +44,35 @@ export function PrivyWalletStateSync() {
     }
   }, [ready, authenticated, wallets, address, setActiveWallet]);
 
+  // 2. Inject the embedded wallet's EIP-1193 provider into the adapter so
+  //    sign/send hit the Privy signer (MPC), not the read-only RPC.
+  useEffect(() => {
+    const embedded = getEmbeddedConnectedWallet(wallets);
+    if (!embedded) {
+      privyAdapter.setProvider(null);
+      return;
+    }
+    let cancelled = false;
+    void embedded
+      .getEthereumProvider()
+      .then((provider) => {
+        if (!cancelled) privyAdapter.setProvider(provider);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [wallets]);
+
+  // 2b. Inject Privy's native send fn (gas sponsorship + confirm UI).
+  useEffect(() => {
+    privyAdapter.setPrivySendTransaction((input, options) =>
+      sendTransaction(input, options),
+    );
+    return () => privyAdapter.setPrivySendTransaction(null);
+  }, [sendTransaction]);
+
+  // 3. Mirror wagmi reactive state into the adapter.
   useEffect(() => {
     privyAdapter.updateState({
       isConnected,

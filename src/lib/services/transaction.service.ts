@@ -134,6 +134,12 @@ export class TransactionService {
         data: unsignedTx.data,
         value: parseUnsignedTxValue(unsignedTx.value),
         chainId: unsignedTx.chainId,
+        // Every on-chain write is an admin action here → surface a pre-sign
+        // confirmation in the wallet. The adapter maps this to its provider's
+        // confirmation UI (Privy uiOptions); providers without one ignore it.
+        confirmation: {
+          description: params.description ?? params.contractCall.functionName,
+        },
         ...(paymasterData ? { paymasterData } : {}),
       };
 

@@ -2,23 +2,19 @@
 // lib/adapters/wallet/privy.adapter.ts
 //
 // Privy adapter — implements WalletPort.
-// Direct analogue of web3auth.adapter.ts: Privy embedded wallets surface
-// as wagmi connectors (via @privy-io/wagmi), so signing / sending go
-// through the same wagmi core (imperative) actions — NOT hooks.
 //
-// The wagmi config MUST be the one from Privy's WagmiProvider (with the
-// embedded-wallet connector). PrivyWalletStateSync injects it via
-// setWagmiConfig. Fallback to lib/privy-wagmi-config.ts only before sync.
+// Signing / sending go through the Privy embedded wallet's own EIP-1193
+// provider (`wallet.getEthereumProvider()`), injected by
+// PrivyWalletStateSync. This is Privy's documented path for embedded
+// wallets: `eth_sendTransaction` etc. are handled by the wallet (MPC
+// signing, then broadcast). We deliberately do NOT use @wagmi/core's
+// imperative sendTransaction here — for embedded wallets it routes to a
+// read-only RPC transport instead of the signer (viem 2.52 then probes
+// `wallet_sendTransaction`, which the RPC rejects).
+//
+// Wagmi is still used for READS (useAccount/useReadContract) via the
+// Privy WagmiProvider; only the write/sign path lives here.
 // ============================================================
-
-import {
-  sendTransaction as wagmiSendTransaction,
-  signMessage as wagmiSignMessage,
-  signTypedData as wagmiSignTypedData,
-  switchChain as wagmiSwitchChain,
-} from "@wagmi/core";
-import type { Config } from "wagmi";
-import { privyWagmiConfig } from "@/lib/privy-wagmi-config";
 
 import type { WalletPort } from "../../ports/wallet.port";
 import type {
@@ -30,19 +26,63 @@ import {
   providerNotInitialized,
   adapterNotImplemented,
 } from "../../core/errors";
+import { privySponsorGas } from "@/config/privy";
+
+/** Minimal EIP-1193 shape — the embedded wallet's provider. */
+type Eip1193Provider = {
+  request(args: { method: string; params?: unknown[] }): Promise<unknown>;
+};
+
+/** Privy's `useSendTransaction().sendTransaction`, injected from React.
+ *  Preferred over the raw provider for sends because it supports native
+ *  gas sponsorship (`sponsor`) and a pre-sign confirmation UI (`uiOptions`). */
+type PrivySendTransaction = (
+  input: {
+    from?: string;
+    to?: string;
+    data?: string;
+    value?: string;
+    chainId?: number;
+  },
+  options?: {
+    sponsor?: boolean;
+    uiOptions?: { showWalletUIs?: boolean; description?: string };
+  },
+) => Promise<{ hash: `0x${string}` }>;
 
 export class PrivyWalletAdapter implements WalletPort {
   private stateListeners: Set<(state: WalletState) => void> = new Set();
-  /** Config from Privy WagmiProvider — has the embedded-wallet connector. Set by PrivyWalletStateSync. */
-  private wagmiConfigRef: Config | null = null;
 
-  /** Called by PrivyWalletStateSync — use the config from WagmiProvider (has Privy connector). */
-  setWagmiConfig(config: Config): void {
-    this.wagmiConfigRef = config;
+  /** The embedded wallet's EIP-1193 provider. Set by PrivyWalletStateSync. */
+  private provider: Eip1193Provider | null = null;
+
+  /** Privy's native send fn (gas sponsorship + confirm UI). Set by
+   *  PrivyWalletStateSync. Falls back to the raw provider if unset. */
+  private privySend: PrivySendTransaction | null = null;
+
+  /** Called by PrivyWalletStateSync with the embedded wallet's provider
+   *  (or null when no embedded wallet is connected). */
+  setProvider(provider: Eip1193Provider | null): void {
+    this.provider = provider;
   }
 
-  private getConfig(): Config {
-    return this.wagmiConfigRef ?? privyWagmiConfig;
+  /** Called by PrivyWalletStateSync with Privy's useSendTransaction fn. */
+  setPrivySendTransaction(fn: PrivySendTransaction | null): void {
+    this.privySend = fn;
+  }
+
+  private requireProvider(): Eip1193Provider {
+    if (!this.provider) {
+      throw providerNotInitialized("Privy: embedded wallet provider not ready");
+    }
+    return this.provider;
+  }
+
+  private requireAddress(): Address {
+    if (!this.currentState.address) {
+      throw providerNotInitialized("Privy: wallet not connected");
+    }
+    return this.currentState.address;
   }
 
   private currentState: WalletState = {
@@ -55,9 +95,9 @@ export class PrivyWalletAdapter implements WalletPort {
   };
 
   // ── Connection ─────────────────────────────────────────────
-  // Connect/disconnect are UI-driven via useWallet hook. The Privy
-  // embedded wallet is provisioned on Clerk login (createOnLogin) and
-  // surfaced through wagmi by PrivyWalletStateSync — there is no modal.
+  // Connect/disconnect are UI-driven via the useWallet hook. The embedded
+  // wallet is provisioned on Clerk login and surfaced through wagmi by
+  // PrivyWalletStateSync — there is no modal.
   async connect(): Promise<void> {
     throw adapterNotImplemented("PrivyWalletAdapter.connect — use useWallet().connect() in UI");
   }
@@ -78,10 +118,7 @@ export class PrivyWalletAdapter implements WalletPort {
 
   // ── Identity ───────────────────────────────────────────────
   async getAddress(): Promise<Address> {
-    if (!this.currentState.address) {
-      throw providerNotInitialized("Privy: wallet not connected");
-    }
-    return this.currentState.address;
+    return this.requireAddress();
   }
 
   async getChainId(): Promise<ChainId> {
@@ -94,7 +131,11 @@ export class PrivyWalletAdapter implements WalletPort {
   // ── Signing ────────────────────────────────────────────────
   async signMessage(message: string): Promise<Hex> {
     try {
-      const result = await wagmiSignMessage(this.getConfig(), { message });
+      const from = this.requireAddress();
+      const result = await this.requireProvider().request({
+        method: "personal_sign",
+        params: [message, from],
+      });
       return result as Hex;
     } catch (err) {
       throw normalizeToDomainError(err);
@@ -107,15 +148,14 @@ export class PrivyWalletAdapter implements WalletPort {
     value: unknown,
   ): Promise<Hex> {
     try {
+      const from = this.requireAddress();
       // Derive primaryType — first key that isn't EIP712Domain
-      const primaryType = Object.keys(types as object).find(
-        (k) => k !== "EIP712Domain",
-      ) ?? "";
-      const result = await wagmiSignTypedData(this.getConfig(), {
-        domain: domain as any,
-        types: types as any,
-        primaryType,
-        message: value as any,
+      const primaryType =
+        Object.keys(types as object).find((k) => k !== "EIP712Domain") ?? "";
+      const typedData = { domain, types, primaryType, message: value };
+      const result = await this.requireProvider().request({
+        method: "eth_signTypedData_v4",
+        params: [from, JSON.stringify(typedData)],
       });
       return result as Hex;
     } catch (err) {
@@ -126,14 +166,46 @@ export class PrivyWalletAdapter implements WalletPort {
   // ── Transactions ───────────────────────────────────────────
   async sendTransaction(request: TransactionRequest): Promise<Hex> {
     try {
-      const result = await wagmiSendTransaction(this.getConfig(), {
-        to: request.to,
-        data: request.data,
-        value: request.value,
-        chainId: request.chainId as 1 | 11155111 | 137 | undefined,
+      const from = this.requireAddress();
+      const value =
+        request.value !== undefined && request.value !== BigInt(0)
+          ? `0x${request.value.toString(16)}`
+          : undefined;
+
+      // Preferred: Privy's native send — applies gas sponsorship (per the
+      // dashboard policy) and shows a pre-sign confirmation for on-chain
+      // writes. chainId is passed so Privy targets the right network.
+      if (this.privySend) {
+        const { hash } = await this.privySend(
+          {
+            from,
+            to: request.to,
+            ...(request.data ? { data: request.data } : {}),
+            ...(value ? { value } : {}),
+            ...(request.chainId ? { chainId: request.chainId } : {}),
+          },
+          {
+            sponsor: privySponsorGas,
+            uiOptions: {
+              showWalletUIs: true,
+              ...(request.confirmation?.description
+                ? { description: request.confirmation.description }
+                : {}),
+            },
+          },
+        );
+        return hash as Hex;
+      }
+
+      // Fallback: raw EIP-1193 provider (no sponsorship / no confirm UI).
+      const tx: Record<string, string> = { from, to: request.to };
+      if (request.data) tx.data = request.data;
+      if (value) tx.value = value;
+      const hash = await this.requireProvider().request({
+        method: "eth_sendTransaction",
+        params: [tx],
       });
-      // wagmi sendTransaction returns { hash }
-      return (result as unknown as { hash: Hex }).hash ?? (result as unknown as Hex);
+      return hash as Hex;
     } catch (err) {
       throw normalizeToDomainError(err);
     }
@@ -142,7 +214,10 @@ export class PrivyWalletAdapter implements WalletPort {
   // ── Chain ──────────────────────────────────────────────────
   async switchChain(chainId: ChainId): Promise<void> {
     try {
-      await wagmiSwitchChain(this.getConfig(), { chainId: chainId as 1 | 11155111 | 137 });
+      await this.requireProvider().request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: `0x${chainId.toString(16)}` }],
+      });
       this.updateState({ chainId });
     } catch (err) {
       throw normalizeToDomainError(err);
@@ -156,7 +231,11 @@ export class PrivyWalletAdapter implements WalletPort {
 
   // ── Lifecycle ──────────────────────────────────────────────
   isReady(): boolean {
-    return this.currentState.isConnected && !!this.currentState.address;
+    return (
+      this.currentState.isConnected &&
+      !!this.currentState.address &&
+      (!!this.privySend || !!this.provider)
+    );
   }
 
   onStateChange(callback: (state: WalletState) => void): () => void {
