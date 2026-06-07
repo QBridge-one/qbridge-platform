@@ -20,6 +20,7 @@ export interface ContractAddresses {
   platformAccessManager: Address | null;
   tokenAccessManager: Address | null;
   issuerRegistry: Address | null;
+  tokenRegistry: Address | null;
   isSupported: boolean;
   chainId: number;
 }
@@ -32,6 +33,7 @@ export function useContracts(): ContractAddresses {
       platformAccessManager: null,
       tokenAccessManager: null,
       issuerRegistry: null,
+      tokenRegistry: null,
       isSupported: false,
       chainId,
     };
@@ -43,6 +45,7 @@ export function useContracts(): ContractAddresses {
       platformAccessManager: contracts.platformAccessManager || null,
       tokenAccessManager: contracts.tokenAccessManager || null,
       issuerRegistry: contracts.issuerRegistry || null,
+      tokenRegistry: contracts.tokenRegistry || null,
       isSupported: true,
       chainId,
     };
@@ -51,6 +54,7 @@ export function useContracts(): ContractAddresses {
       platformAccessManager: null,
       tokenAccessManager: null,
       issuerRegistry: null,
+      tokenRegistry: null,
       isSupported: false,
       chainId,
     };
@@ -73,6 +77,11 @@ export function useTokenAMAddress(): Address | null {
 export function useIssuerRegistryAddress(): Address | null {
   const { issuerRegistry } = useContracts();
   return issuerRegistry;
+}
+
+export function useTokenRegistryAddress(): Address | null {
+  const { tokenRegistry } = useContracts();
+  return tokenRegistry;
 }
 
 export function useContractAddress(contractKey: string): Address | null {

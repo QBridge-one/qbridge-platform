@@ -1,0 +1,105 @@
+{
+  "contractName": "TokenRegistry",
+  "featureKey": "token-registry",
+  "contractAddressKey": "tokenRegistry",
+  "abiPath": "contracts/token-registry/abi.json",
+  "functions": {
+    "include": [
+      "isRegistered",
+      "isDelisted",
+      "getToken",
+      "tokensByIssuer",
+      "tokenCount",
+      "tokenAt",
+      "factory",
+      "authority",
+      "delistToken",
+      "relistToken",
+      "setFactory"
+    ],
+    "overrides": {
+      "isRegistered": {
+        "displayName": "Check Token Registered",
+        "description": "Returns true if the token address is recorded in the registry (regardless of delisted state).",
+        "dangerous": false,
+        "paramLabels": {
+          "token": "Token Address"
+        }
+      },
+      "isDelisted": {
+        "displayName": "Check Token Delisted",
+        "description": "Returns true if a registered token has been delisted (hidden from the active catalog).",
+        "dangerous": false,
+        "paramLabels": {
+          "token": "Token Address"
+        }
+      },
+      "getToken": {
+        "displayName": "Get Token Record",
+        "description": "Read the full on-chain token struct: token, deployedAt, delisted flag, issuer, category, and assetType.",
+        "dangerous": false,
+        "paramLabels": {
+          "token": "Token Address"
+        }
+      },
+      "tokensByIssuer": {
+        "displayName": "Get Tokens by Issuer",
+        "description": "List all token addresses registered for a given issuer wallet.",
+        "dangerous": false,
+        "paramLabels": {
+          "issuer": "Issuer Wallet Address"
+        }
+      },
+      "tokenCount": {
+        "displayName": "Token Count",
+        "description": "Total number of tokens registered across the platform (delisted included).",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "tokenAt": {
+        "displayName": "Get Token at Index",
+        "description": "Resolve the token address at a position in the registry enumeration. Use with tokenCount to page the full catalog.",
+        "dangerous": false,
+        "paramLabels": {
+          "index": "Index"
+        }
+      },
+      "factory": {
+        "displayName": "Factory Address",
+        "description": "Address of the Factory contract authorized to register tokens (the only caller of registerToken).",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "authority": {
+        "displayName": "Access Manager Authority",
+        "description": "Address of the PlatformAccessManager that controls who may call restricted functions.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "delistToken": {
+        "displayName": "Delist Token",
+        "description": "Remove a registered token from the active catalog. The record is preserved; isDelisted becomes true until relisted.",
+        "dangerous": true,
+        "paramLabels": {
+          "token": "Token Address"
+        }
+      },
+      "relistToken": {
+        "displayName": "Relist Token",
+        "description": "Restore a previously delisted token back into the active catalog.",
+        "dangerous": false,
+        "paramLabels": {
+          "token": "Token Address"
+        }
+      },
+      "setFactory": {
+        "displayName": "Set Factory",
+        "description": "Update the Factory address allowed to register tokens. Governance action; does not affect already-registered tokens.",
+        "dangerous": true,
+        "paramLabels": {
+          "newFactory": "New Factory Address"
+        }
+      }
+    }
+  }
+}

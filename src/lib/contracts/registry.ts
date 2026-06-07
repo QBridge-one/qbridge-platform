@@ -23,16 +23,19 @@
 // NEXT_PUBLIC_PLATFORM_AM_SEPOLIA=0x...
 // NEXT_PUBLIC_TOKEN_AM_SEPOLIA=0x...
 // NEXT_PUBLIC_ISSUER_REGISTRY_SEPOLIA=0x...
+// NEXT_PUBLIC_TOKEN_REGISTRY_SEPOLIA=0x...
 //
 // # Mainnet (chain 1)
 // NEXT_PUBLIC_PLATFORM_AM_MAINNET=0x...
 // NEXT_PUBLIC_TOKEN_AM_MAINNET=0x...
 // NEXT_PUBLIC_ISSUER_REGISTRY_MAINNET=0x...
+// NEXT_PUBLIC_TOKEN_REGISTRY_MAINNET=0x...
 //
 // # Polygon (chain 137)
 // NEXT_PUBLIC_PLATFORM_AM_POLYGON=0x...
 // NEXT_PUBLIC_TOKEN_AM_POLYGON=0x...
 // NEXT_PUBLIC_ISSUER_REGISTRY_POLYGON=0x...
+// NEXT_PUBLIC_TOKEN_REGISTRY_POLYGON=0x...
 
 type Address = `0x${string}`;
 
@@ -40,8 +43,9 @@ interface ChainContracts {
   platformAccessManager: Address;
   tokenAccessManager: Address;
   issuerRegistry: Address;
+  tokenRegistry: Address;
   // Add future contracts here as the platform grows:
-  // tokenFactory?: Address;
+  // factory?: Address;
   // complianceChecker?: Address;
   // proofOfReserve?: Address;
   [key: string]: Address | undefined;
@@ -56,6 +60,7 @@ const REGISTRY: Registry = {
     platformAccessManager: (process.env.NEXT_PUBLIC_PLATFORM_AM_SEPOLIA ?? "") as Address,
     tokenAccessManager: (process.env.NEXT_PUBLIC_TOKEN_AM_SEPOLIA ?? "") as Address,
     issuerRegistry: (process.env.NEXT_PUBLIC_ISSUER_REGISTRY_SEPOLIA ?? "") as Address,
+    tokenRegistry: (process.env.NEXT_PUBLIC_TOKEN_REGISTRY_SEPOLIA ?? "") as Address,
   },
 
   // Ethereum mainnet
@@ -63,6 +68,7 @@ const REGISTRY: Registry = {
     platformAccessManager: (process.env.NEXT_PUBLIC_PLATFORM_AM_MAINNET ?? "") as Address,
     tokenAccessManager: (process.env.NEXT_PUBLIC_TOKEN_AM_MAINNET ?? "") as Address,
     issuerRegistry: (process.env.NEXT_PUBLIC_ISSUER_REGISTRY_MAINNET ?? "") as Address,
+    tokenRegistry: (process.env.NEXT_PUBLIC_TOKEN_REGISTRY_MAINNET ?? "") as Address,
   },
 
   // Polygon
@@ -70,6 +76,7 @@ const REGISTRY: Registry = {
     platformAccessManager: (process.env.NEXT_PUBLIC_PLATFORM_AM_POLYGON ?? "") as Address,
     tokenAccessManager: (process.env.NEXT_PUBLIC_TOKEN_AM_POLYGON ?? "") as Address,
     issuerRegistry: (process.env.NEXT_PUBLIC_ISSUER_REGISTRY_POLYGON ?? "") as Address,
+    tokenRegistry: (process.env.NEXT_PUBLIC_TOKEN_REGISTRY_POLYGON ?? "") as Address,
   },
 };
 
@@ -113,6 +120,10 @@ export function getTokenAMAddress(chainId: number): Address {
 
 export function getIssuerRegistryAddress(chainId: number): Address {
   return getContracts(chainId).issuerRegistry;
+}
+
+export function getTokenRegistryAddress(chainId: number): Address {
+  return getContracts(chainId).tokenRegistry;
 }
 
 export function getContractAddress(chainId: number, contractKey: string): Address | null {
