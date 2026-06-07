@@ -1,6 +1,8 @@
 // ============================================================
 // lib/contracts/issuer-registry-status.ts
-// Server-side batch reads of IssuerRegistry.isApproved for ops lists.
+// Server-side batch reads of IssuerRegistry.getStatus for ops lists.
+// Reads the full status enum (not just isApproved) so the ops queue can
+// distinguish Suspended / Revoked from never-registered.
 // ============================================================
 
 import { createPublicClient, http } from "viem";
@@ -15,10 +17,27 @@ const OPS_REGISTRY_CHAIN_ID = 11155111;
 
 export type IssuerRegistryRowStatus =
   | "approved"
+  | "suspended"
+  | "revoked"
   | "not_registered"
   | "no_wallet"
   | "no_admin"
   | "unconfigured";
+
+/** Map the on-chain IssuerStatus enum (0 None, 1 Active, 2 Suspended,
+ *  3 Revoked) to a row status. None / anything unknown = never registered. */
+function mapIssuerStatus(status: number): IssuerRegistryRowStatus {
+  switch (status) {
+    case 1:
+      return "approved";
+    case 2:
+      return "suspended";
+    case 3:
+      return "revoked";
+    default:
+      return "not_registered";
+  }
+}
 
 export interface IssuerRegistryStatusEntry {
   wallet: Address | null;
@@ -73,10 +92,10 @@ export async function batchIssuerRegistryStatus(
           ];
         }
 
-        const isApproved = await client.readContract({
+        const statusRaw = await client.readContract({
           address: trimmed as Address,
           abi: ISSUER_REGISTRY_ABI,
-          functionName: "isApproved",
+          functionName: "getStatus",
           args: [admin.walletAddress],
         });
 
@@ -84,7 +103,7 @@ export async function batchIssuerRegistryStatus(
           orgId,
           {
             wallet: admin.walletAddress,
-            status: isApproved ? ("approved" as const) : ("not_registered" as const),
+            status: mapIssuerStatus(Number(statusRaw)),
           },
         ] satisfies [string, IssuerRegistryStatusEntry];
       } catch {

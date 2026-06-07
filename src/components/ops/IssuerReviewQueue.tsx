@@ -92,6 +92,14 @@ const REGISTRY_STATUS_BADGE: Record<
     label: "KYB verified",
     cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200",
   },
+  suspended: {
+    label: "Suspended",
+    cls: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-200",
+  },
+  revoked: {
+    label: "Revoked",
+    cls: "border-destructive/40 bg-destructive/10 text-destructive",
+  },
   not_registered: {
     label: "Not verified",
     cls: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-200",
