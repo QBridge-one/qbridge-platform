@@ -20,6 +20,7 @@ import { getSession } from "@/lib/auth/server";
 import { can } from "@/lib/auth/permissions";
 import { platformSettingsAdapter } from "@/lib/container.server";
 import { KybTierToggle } from "@/components/ops/KybTierToggle";
+import { DefaultExpirationSetting } from "@/components/ops/DefaultExpirationSetting";
 
 type Tier = "basic" | "full";
 type Source = "db" | "env" | "default";
@@ -64,6 +65,20 @@ export default async function OpsFlagsPage() {
         </CardHeader>
         <CardContent>
           <KybTierToggle initialTier={tier} initialSource={source} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Issuer registration expiry</CardTitle>
+          <CardDescription>
+            Default validity period applied to new on-chain issuer registrations and wallet
+            migrations. Existing issuers are not affected. This is an on-chain setting on
+            IssuerRegistry — it requires an ops wallet authorized on the contract.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DefaultExpirationSetting />
         </CardContent>
       </Card>
     </div>
