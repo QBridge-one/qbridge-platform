@@ -4,14 +4,24 @@
 //
 // Discovers all contracts under src/contracts/*/
 // For each contract:
-//   - Always regenerates manifest.json via LLM (ANTHROPIC_API_KEY and/or GEMINI_API_KEY; see ai-manifest-generator.ts)
-//   - Use --keep-manifest to skip AI when manifest.json already exists (faster / offline)
+//   - DEFAULT: the committed manifest.json is the source of truth. Codegen is
+//     deterministic and never calls an LLM, so re-running never silently
+//     re-rolls an already-curated manifest. (If a folder has abi.json but no
+//     manifest.json yet, one is drafted via LLM to bootstrap it — then review
+//     and commit it.)
+//   - Pass --ai-manifest to (re)generate manifest.json via LLM on purpose
+//     (ANTHROPIC_API_KEY and/or GEMINI_API_KEY; see ai-manifest-generator.ts).
+//     It overwrites manifest.json — review the git diff before committing.
 //
 // Usage:
-//   yarn generate                          ← all contracts (LLM manifest each time)
-//   yarn generate --keep-manifest        ← reuse existing manifest.json if present
+//   yarn generate                          ← deterministic, from committed manifests
 //   yarn generate --only issuer-registry   ← one contract
-//   yarn generate --manifest <path>        ← explicit manifest file(s), no AI
+//   yarn generate:manifest                 ← (re)draft manifests via LLM, then codegen
+//   yarn generate --ai-manifest --only x   ← redraft just one
+//   yarn generate --manifest <path>        ← codegen from explicit manifest file(s), no AI
+//
+// (--keep-manifest is still accepted but is now a no-op — reusing the committed
+//  manifest is the default.)
 //
 // Skips folders starting with _ or .
 // ============================================================
@@ -78,7 +88,7 @@ function discoverContractDirs(): string[] {
     .map((d) => path.join(contractsDir, d.name));
 }
 
-function parseCli(): { only?: string; keepManifest: boolean; manifestPaths: string[] } {
+function parseCli(): { only?: string; forceAiManifest: boolean; manifestPaths: string[] } {
   const raw = [...process.argv.slice(2)];
   let only: string | undefined;
   const onlyIdx = raw.indexOf("--only");
@@ -86,12 +96,18 @@ function parseCli(): { only?: string; keepManifest: boolean; manifestPaths: stri
     only = raw[onlyIdx + 1];
     raw.splice(onlyIdx, 2);
   }
-  let keepManifest = false;
-  const kmIdx = raw.indexOf("--keep-manifest");
-  if (kmIdx !== -1) {
-    keepManifest = true;
-    raw.splice(kmIdx, 1);
+  // Explicit opt-in: (re)generate manifest.json via LLM. Default is OFF — the
+  // committed manifest is the source of truth.
+  let forceAiManifest = false;
+  const aiIdx = raw.indexOf("--ai-manifest");
+  if (aiIdx !== -1) {
+    forceAiManifest = true;
+    raw.splice(aiIdx, 1);
   }
+  // Deprecated no-op: reusing the committed manifest is now the default.
+  const kmIdx = raw.indexOf("--keep-manifest");
+  if (kmIdx !== -1) raw.splice(kmIdx, 1);
+
   const manifestPaths: string[] = [];
   for (let i = 0; i < raw.length; i++) {
     const a = raw[i];
@@ -107,7 +123,7 @@ function parseCli(): { only?: string; keepManifest: boolean; manifestPaths: stri
       manifestPaths.push(path.resolve(a));
     }
   }
-  return { only, keepManifest, manifestPaths };
+  return { only, forceAiManifest, manifestPaths };
 }
 
 function runCodegen(manifest: ContractManifest, writer: CodeWriter): void {
@@ -171,7 +187,7 @@ function runCodegenFromManifestFile(manifestPath: string): void {
   runCodegen(manifest, writer);
 }
 
-async function processContractFolder(contractDir: string, keepManifest: boolean): Promise<void> {
+async function processContractFolder(contractDir: string, forceAiManifest: boolean): Promise<void> {
   const featureKey = path.basename(contractDir);
   const manifestPath = path.join(contractDir, "manifest.json");
   const abiPathFile = path.join(contractDir, "abi.json");
@@ -184,8 +200,18 @@ async function processContractFolder(contractDir: string, keepManifest: boolean)
     return;
   }
 
-  const shouldCallClaude = !keepManifest || !fs.existsSync(manifestPath);
-  if (shouldCallClaude) {
+  // The committed manifest is the source of truth. Only call the LLM when the
+  // user explicitly asks (--ai-manifest), or to bootstrap a folder that has no
+  // manifest.json yet. Keeps `yarn generate` deterministic and stops it from
+  // silently re-rolling already-curated manifests.
+  const manifestExists = fs.existsSync(manifestPath);
+  const shouldCallAi = forceAiManifest || !manifestExists;
+  if (shouldCallAi) {
+    if (!manifestExists) {
+      console.log(`  │  No manifest.json yet — drafting one via LLM (review & commit it).`);
+    } else {
+      console.log(`  │  --ai-manifest: regenerating manifest via LLM (overwrites; review the diff).`);
+    }
     try {
       await generateManifest(contractDir, srcRoot);
     } catch (err: unknown) {
@@ -195,7 +221,7 @@ async function processContractFolder(contractDir: string, keepManifest: boolean)
       return;
     }
   } else {
-    console.log(`  │  Using existing manifest.json (--keep-manifest)\n`);
+    console.log(`  │  Using committed manifest.json (source of truth)\n`);
   }
 
   let manifest: ContractManifest;
@@ -217,7 +243,7 @@ async function main(): Promise<void> {
   applyEnvFile(path.join(repoRoot, ".env.local"));
   applyEnvFile(path.join(repoRoot, ".env"));
 
-  const { only, keepManifest, manifestPaths } = parseCli();
+  const { only, forceAiManifest, manifestPaths } = parseCli();
 
   console.log(`\n  QBridge Contract Generator`);
   console.log(`  ──────────────────────────`);
@@ -247,12 +273,14 @@ async function main(): Promise<void> {
   console.log(
     `\n  Found ${contractDirs.length} contract folder(s): ${contractDirs.map((d) => path.basename(d)).join(", ")}`,
   );
-  if (!keepManifest) {
-    console.log(`  Manifest: regenerate via LLM for each folder (pass --keep-manifest to reuse existing)\n`);
+  if (forceAiManifest) {
+    console.log(`  Manifest: --ai-manifest → (re)generate via LLM, then codegen (review the diff)\n`);
+  } else {
+    console.log(`  Manifest: using committed manifest.json (deterministic; --ai-manifest to redraft)\n`);
   }
 
   for (const contractDir of contractDirs) {
-    await processContractFolder(contractDir, keepManifest);
+    await processContractFolder(contractDir, forceAiManifest);
   }
 
   console.log(`  All done.\n`);
