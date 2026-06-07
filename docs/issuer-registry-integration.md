@@ -116,6 +116,7 @@ Returned when ops opens an issuer in the review drawer. `registerIssuer` is non-
 
 ## Related docs
 
+- `docs/issuer-registry-lifecycle.md` — lifecycle actions (suspend/reactivate/revoke/expiry) & build status
 - `docs/notifications-and-email.md` §4.2 — off-chain KYB approve/reject
 - `docs/database-and-chain-roles.md` — two-truth pattern for AccessManager
 - `Docs/IDENTITY.md` — three layers (identity / off-chain RBAC / on-chain RBAC)
