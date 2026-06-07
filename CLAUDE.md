@@ -84,10 +84,12 @@ src/lib/container.server.ts   wires server-only adapters (identity, org, wallet-
 
 ## Docs
 
+- `docs/platform-contracts.md` — **contract topology** (platform singletons vs per-deal clusters), Sepolia addresses, how each class is integrated. Read before wiring a new contract.
 - `Docs/WALLET-PROVIDER.md` — wallet architecture (Privy, binding, sponsorship)
 - `Docs/IDENTITY.md` — Clerk identity, planes, RBAC
-- `docs/issuer-registry-integration.md` · `docs/database-and-chain-roles.md` ·
-  `docs/kyb-verification-provider.md` · `docs/notifications-and-email.md`
+- `docs/issuer-registry-integration.md` · `docs/issuer-registry-lifecycle.md` ·
+  `docs/database-and-chain-roles.md` · `docs/kyb-verification-provider.md` ·
+  `docs/notifications-and-email.md`
 
 For Privy questions, the Privy docs are queryable via their MCP at
 `https://docs.privy.io/mcp` (`search_privy_docs` + `query_docs_filesystem`).
