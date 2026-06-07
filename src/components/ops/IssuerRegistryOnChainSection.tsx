@@ -2,9 +2,11 @@
 
 // ============================================================
 // IssuerRegistryOnChainSection
-// Ops drawer panel: off-chain registration context + on-chain reads
-// and registerIssuer via transactionService (mirrors TeamMemberSheet
-// chain-role UX — wrong network, loading, tx hash + Etherscan).
+// Ops drawer panel: off-chain registration context + on-chain reads,
+// registerIssuer, and the lifecycle actions (suspend ↔ reactivate) —
+// all via transactionService (mirrors TeamMemberSheet chain-role UX:
+// wrong network, loading, tx hash + Etherscan). Which lifecycle action
+// shows is driven by the on-chain issuer status.
 // ============================================================
 
 import { useState } from "react";
@@ -19,7 +21,9 @@ import { useIssuerRegistryAddress } from "@/lib/hooks/useContracts";
 import {
   useGetIssuer,
   useIsApproved,
+  useReactivateIssuer,
   useRegisterIssuer,
+  useSuspendIssuer,
 } from "@/lib/generated/issuer-registry";
 import type { RegisterIssuerPayload } from "@/lib/contracts/issuer-registry-payload";
 import { explorerAddressUrl, explorerTxUrl } from "@/lib/explorer-urls";
@@ -65,11 +69,17 @@ function TxStatus({
   txHash,
   chainId,
   onDismiss,
+  title = "KYB verified on-chain",
+  description = "The verification was included in a block.",
+  loadingTitle = "On-chain verification in progress",
 }: {
   loading: boolean;
   txHash: Hex | null;
   chainId: number;
   onDismiss: () => void;
+  title?: string;
+  description?: string;
+  loadingTitle?: string;
 }) {
   if (txHash) {
     const url = explorerTxUrl(chainId, txHash);
@@ -82,10 +92,10 @@ function TxStatus({
           />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium text-emerald-800 dark:text-emerald-200">
-              KYB verified on-chain
+              {title}
             </p>
             <p className="text-xs text-emerald-700/90 dark:text-emerald-300/90">
-              The verification was included in a block.
+              {description}
             </p>
           </div>
         </div>
@@ -120,7 +130,7 @@ function TxStatus({
           aria-hidden
         />
         <div className="min-w-0">
-          <p className="text-xs font-medium text-foreground">On-chain verification in progress</p>
+          <p className="text-xs font-medium text-foreground">{loadingTitle}</p>
           <p className="text-xs text-muted-foreground">
             Preparing the transaction — your wallet will ask you to sign. Gas may apply.
           </p>
@@ -312,8 +322,18 @@ function IssuerRegistryChainActions({
   const chainLoading = isApprovedLoading || issuerLoading;
   const alreadyRegistered = isApproved === true;
 
+  // Drive the lifecycle UI off the on-chain status, not just isApproved: a
+  // Suspended issuer (status 2) is still registered but has isApproved === false,
+  // so keying off isApproved alone would wrongly re-offer "Verify KYB on-chain".
+  const statusNum = issuerRecord
+    ? Number(issuerRecord.status)
+    : alreadyRegistered
+      ? 1
+      : undefined;
+  const isRegistered = statusNum === 1 || statusNum === 2 || statusNum === 3;
+
   const canRegister =
-    Boolean(registerPayload) && !wrongChain && !registering && !alreadyRegistered;
+    Boolean(registerPayload) && !wrongChain && !registering && !isRegistered;
 
   async function handleRegister() {
     if (!registerPayload || wrongChain) return;
@@ -370,12 +390,26 @@ function IssuerRegistryChainActions({
 
   return (
     <>
-      {alreadyRegistered ? (
+      {statusNum === 1 ? (
         <Badge
           variant="outline"
           className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200"
         >
           KYB verified on-chain
+        </Badge>
+      ) : statusNum === 2 ? (
+        <Badge
+          variant="outline"
+          className="border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-200"
+        >
+          Suspended
+        </Badge>
+      ) : statusNum === 3 ? (
+        <Badge
+          variant="outline"
+          className="border-destructive/40 bg-destructive/10 text-destructive"
+        >
+          Revoked
         </Badge>
       ) : isApproved === false ? (
         <Badge variant="outline" className="text-xs">
@@ -411,7 +445,7 @@ function IssuerRegistryChainActions({
         onDismiss={() => setConfirmedTxHash(null)}
       />
 
-      {!alreadyRegistered && registerPayload ? (
+      {!isRegistered && registerPayload ? (
         <Button
           type="button"
           className="w-full"
@@ -420,12 +454,153 @@ function IssuerRegistryChainActions({
         >
           {registering ? "Verifying…" : "Verify KYB on-chain"}
         </Button>
-      ) : alreadyRegistered ? (
-        <p className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-          This issuer is already KYB-verified on IssuerRegistry. Suspend or revoke flows are not
-          wired in this panel yet.
-        </p>
+      ) : isRegistered && statusNum !== undefined ? (
+        <IssuerLifecycleActions
+          issuerWallet={issuerWallet}
+          status={statusNum}
+          wrongChain={wrongChain}
+          onChanged={() => {
+            void refetchApproved();
+            void refetchIssuer();
+            onRegistered();
+          }}
+        />
       ) : null}
     </>
+  );
+}
+
+// ── Lifecycle actions (suspend ↔ reactivate) ─────────────────
+// Mirrors the registerIssuer flow above: an action button drives
+// transactionService (which surfaces the wallet's pre-sign confirmation
+// modal), then TxStatus shows the result + Etherscan and the parent refetches
+// on-chain state. Which action is shown is driven by the on-chain issuer status
+// (1 Active → Suspend, 2 Suspended → Reactivate, 3 Revoked → terminal). Copy is
+// taken from the contract manifest's overrides for these functions.
+function IssuerLifecycleActions({
+  issuerWallet,
+  status,
+  wrongChain,
+  onChanged,
+}: {
+  issuerWallet: Address;
+  status: number;
+  wrongChain: boolean;
+  onChanged: () => void;
+}) {
+  const { suspendIssuer, isLoading: suspending, error: suspendError, reset: resetSuspend } =
+    useSuspendIssuer();
+  const {
+    reactivateIssuer,
+    isLoading: reactivating,
+    error: reactivateError,
+    reset: resetReactivate,
+  } = useReactivateIssuer();
+
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [confirmedTxHash, setConfirmedTxHash] = useState<Hex | null>(null);
+  const [successCopy, setSuccessCopy] = useState<{ title: string; description: string }>({
+    title: "Issuer updated",
+    description: "The change was included in a block.",
+  });
+
+  const busy = suspending || reactivating;
+
+  async function runAction(
+    action: (args: { wallet: Address }) => Promise<Hex | null | undefined>,
+    copy: { title: string; description: string },
+    reset: () => void,
+  ) {
+    if (wrongChain || busy) return;
+    setLocalError(null);
+    setConfirmedTxHash(null);
+    setSuccessCopy(copy);
+    reset();
+    try {
+      const hash = await action({ wallet: issuerWallet });
+      if (hash) {
+        const txHash = hash as Hex;
+        setConfirmedTxHash(txHash);
+        notifyTxSuccess(copy.title, EXPECTED_CHAIN_ID, txHash);
+        onChanged();
+      }
+    } catch (e) {
+      setLocalError(e instanceof Error ? e.message : "Action failed");
+    }
+  }
+
+  const errMsg = localError ?? suspendError?.message ?? reactivateError?.message;
+
+  return (
+    <div className="space-y-3">
+      {wrongChain ? <WrongNetworkHint expectedChainId={EXPECTED_CHAIN_ID} /> : null}
+
+      {errMsg ? <p className="text-xs text-destructive">{errMsg}</p> : null}
+
+      <TxStatus
+        loading={busy}
+        txHash={confirmedTxHash}
+        chainId={EXPECTED_CHAIN_ID}
+        title={successCopy.title}
+        description={successCopy.description}
+        loadingTitle={suspending ? "Suspending issuer on-chain" : "Reactivating issuer on-chain"}
+        onDismiss={() => setConfirmedTxHash(null)}
+      />
+
+      {status === 1 ? (
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground">
+            Suspend an approved issuer. Expiration and document hash are preserved; the issuer
+            becomes unapproved until reactivated.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={busy || wrongChain}
+            onClick={() =>
+              void runAction(
+                suspendIssuer,
+                {
+                  title: "Issuer suspended",
+                  description: "The suspension was included in a block.",
+                },
+                resetSuspend,
+              )
+            }
+          >
+            {suspending ? "Suspending…" : "Suspend issuer"}
+          </Button>
+        </div>
+      ) : status === 2 ? (
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground">
+            Move this suspended issuer back to Approved. Does not extend expiry if it has already
+            expired.
+          </p>
+          <Button
+            type="button"
+            className="w-full"
+            disabled={busy || wrongChain}
+            onClick={() =>
+              void runAction(
+                reactivateIssuer,
+                {
+                  title: "Issuer reactivated",
+                  description: "The reactivation was included in a block.",
+                },
+                resetReactivate,
+              )
+            }
+          >
+            {reactivating ? "Reactivating…" : "Reactivate issuer"}
+          </Button>
+        </div>
+      ) : status === 3 ? (
+        <p className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          This issuer is revoked. Re-entry requires a fresh registration with new KYB.
+        </p>
+      ) : null}
+    </div>
   );
 }
