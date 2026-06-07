@@ -14,7 +14,7 @@ import type { WalletPort } from "../ports/wallet.port";
 import type { BlockchainPort } from "../ports/blockchain.port";
 import type { GasPolicyPort, MultisigPort, CompliancePort } from "../ports/index";
 import type {
-  Address, Hex, TransactionRequest, TransactionResult,
+  Hex, TransactionRequest,
   TransactionStatus, TransactionCallbacks, ContractCallParams,
   DomainEvent,
 } from "../core/types";
@@ -154,8 +154,25 @@ export class TransactionService {
         timestamp: Date.now(),
       });
 
-      // 7: wait for confirmation
+      // 7: wait for the receipt. waitForTransaction maps a reverted receipt to
+      // status "failed" — a tx can be MINED ("included in a block") yet revert
+      // (e.g. on-chain AccessManager rejects the caller), so we must NOT report
+      // that as success. Surface it as an error instead.
       const receipt = await blockchainPort.waitForTransaction(hash, confirmations);
+
+      if (receipt.status === "failed") {
+        const revertError = normalizeToDomainError(
+          new Error("Transaction was included in a block but reverted on-chain."),
+        );
+        params.callbacks?.onError?.(revertError);
+        onEvent?.({
+          type: "transaction.failed",
+          payload: { error: revertError },
+          timestamp: Date.now(),
+        });
+        return { hash, status: "failed", error: revertError, intentId };
+      }
+
       params.callbacks?.onConfirm?.(receipt);
 
       onEvent?.({
