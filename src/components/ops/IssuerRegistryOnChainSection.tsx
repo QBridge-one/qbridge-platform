@@ -470,6 +470,7 @@ function IssuerRegistryChainActions({
         </Button>
       ) : isRegistered && statusNum !== undefined ? (
         <IssuerLifecycleActions
+          orgId={orgId}
           issuerWallet={issuerWallet}
           status={statusNum}
           wrongChain={wrongChain}
@@ -492,11 +493,13 @@ function IssuerRegistryChainActions({
 // (1 Active → Suspend, 2 Suspended → Reactivate, 3 Revoked → terminal). Copy is
 // taken from the contract manifest's overrides for these functions.
 function IssuerLifecycleActions({
+  orgId,
   issuerWallet,
   status,
   wrongChain,
   onChanged,
 }: {
+  orgId: string;
   issuerWallet: Address;
   status: number;
   wrongChain: boolean;
@@ -526,6 +529,7 @@ function IssuerLifecycleActions({
     action: (args: { wallet: Address }) => Promise<Hex | null | undefined>,
     copy: { title: string; description: string },
     reset: () => void,
+    afterSuccess?: (txHash: Hex) => Promise<void>,
   ) {
     if (wrongChain || busy) return;
     setLocalError(null);
@@ -538,6 +542,10 @@ function IssuerLifecycleActions({
         const txHash = hash as Hex;
         setConfirmedTxHash(txHash);
         notifyTxSuccess(copy.title, EXPECTED_CHAIN_ID, txHash);
+        // Off-chain sync (e.g. revoke resets KYB server-side). The on-chain tx
+        // already succeeded, so a failure here is surfaced as a soft error,
+        // not a rollback.
+        if (afterSuccess) await afterSuccess(txHash);
         onChanged();
       }
     } catch (e) {
@@ -635,9 +643,28 @@ function IssuerLifecycleActions({
               revokeIssuer,
               {
                 title: "Issuer revoked",
-                description: "The revocation was included in a block.",
+                description:
+                  "Revoked on-chain. KYB has been reset — re-entry requires fresh verification.",
               },
               resetRevoke,
+              async (txHash) => {
+                const res = await fetch(
+                  `/api/ops/issuers/${encodeURIComponent(orgId)}/registry/revoke-confirm`,
+                  {
+                    method: "POST",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ txHash, chainId: EXPECTED_CHAIN_ID }),
+                  },
+                );
+                if (!res.ok) {
+                  const data = (await res.json().catch(() => ({}))) as { error?: string };
+                  setLocalError(
+                    data.error
+                      ? `Revoked on-chain but resetting KYB failed: ${data.error}`
+                      : "Revoked on-chain but the server failed to reset KYB.",
+                  );
+                }
+              },
             )
           }
         />

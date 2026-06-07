@@ -229,6 +229,7 @@ export type AuditAction =
   | "kyb.approved"
   | "kyb.rejected"
   | "kyb.chain_verified"
+  | "kyb.chain_revoked"
   | "ops.action";
 
 export interface AuditEntry {
