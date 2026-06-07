@@ -15,6 +15,19 @@ import { useChainId, useSwitchChain } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { Address, Hex } from "@/lib/core/types";
 import { useIssuerRegistrationContext } from "@/lib/hooks/useIssuerRegistrationContext";
 import { useIssuerRegistryAddress } from "@/lib/hooks/useContracts";
@@ -23,6 +36,7 @@ import {
   useIsApproved,
   useReactivateIssuer,
   useRegisterIssuer,
+  useRevokeIssuer,
   useSuspendIssuer,
 } from "@/lib/generated/issuer-registry";
 import type { RegisterIssuerPayload } from "@/lib/contracts/issuer-registry-payload";
@@ -496,6 +510,8 @@ function IssuerLifecycleActions({
     error: reactivateError,
     reset: resetReactivate,
   } = useReactivateIssuer();
+  const { revokeIssuer, isLoading: revoking, error: revokeError, reset: resetRevoke } =
+    useRevokeIssuer();
 
   const [localError, setLocalError] = useState<string | null>(null);
   const [confirmedTxHash, setConfirmedTxHash] = useState<Hex | null>(null);
@@ -504,7 +520,7 @@ function IssuerLifecycleActions({
     description: "The change was included in a block.",
   });
 
-  const busy = suspending || reactivating;
+  const busy = suspending || reactivating || revoking;
 
   async function runAction(
     action: (args: { wallet: Address }) => Promise<Hex | null | undefined>,
@@ -529,7 +545,8 @@ function IssuerLifecycleActions({
     }
   }
 
-  const errMsg = localError ?? suspendError?.message ?? reactivateError?.message;
+  const errMsg =
+    localError ?? suspendError?.message ?? reactivateError?.message ?? revokeError?.message;
 
   return (
     <div className="space-y-3">
@@ -543,7 +560,13 @@ function IssuerLifecycleActions({
         chainId={EXPECTED_CHAIN_ID}
         title={successCopy.title}
         description={successCopy.description}
-        loadingTitle={suspending ? "Suspending issuer on-chain" : "Reactivating issuer on-chain"}
+        loadingTitle={
+          suspending
+            ? "Suspending issuer on-chain"
+            : reactivating
+              ? "Reactivating issuer on-chain"
+              : "Revoking issuer on-chain"
+        }
         onDismiss={() => setConfirmedTxHash(null)}
       />
 
@@ -601,6 +624,103 @@ function IssuerLifecycleActions({
           This issuer is revoked. Re-entry requires a fresh registration with new KYB.
         </p>
       ) : null}
+
+      {/* Revoke is terminal and available from either Active or Suspended. */}
+      {status === 1 || status === 2 ? (
+        <RevokeIssuerDialog
+          issuerWallet={issuerWallet}
+          disabled={busy || wrongChain}
+          onConfirm={() =>
+            void runAction(
+              revokeIssuer,
+              {
+                title: "Issuer revoked",
+                description: "The revocation was included in a block.",
+              },
+              resetRevoke,
+            )
+          }
+        />
+      ) : null}
     </div>
+  );
+}
+
+// ── Revoke confirmation (terminal, destructive) ──────────────
+// Revoke is permanent (re-entry needs a fresh registerIssuer with new KYB), so
+// it gets a strong, deliberate confirm: the reviewer must type REVOKE before the
+// action is enabled. Confirming closes the dialog and hands off to the parent's
+// runAction → wallet pre-sign modal → TxStatus, same as the other actions.
+function RevokeIssuerDialog({
+  issuerWallet,
+  disabled,
+  onConfirm,
+}: {
+  issuerWallet: Address;
+  disabled: boolean;
+  onConfirm: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const ready = confirmText.trim().toUpperCase() === "REVOKE";
+
+  return (
+    <AlertDialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setConfirmText("");
+      }}
+    >
+      <AlertDialogTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-full text-destructive hover:text-destructive"
+          disabled={disabled}
+        >
+          Revoke issuer
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Revoke this issuer?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This permanently revokes the issuer on IssuerRegistry. It cannot be undone —
+            re-entry requires a fresh registration with new KYB.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Wallet: <span className="font-mono">{truncateHex(issuerWallet)}</span>
+          </p>
+          <Label htmlFor="revoke-confirm" className="text-xs">
+            Type <span className="font-mono font-semibold">REVOKE</span> to confirm
+          </Label>
+          <Input
+            id="revoke-confirm"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="REVOKE"
+            autoComplete="off"
+            autoCapitalize="characters"
+          />
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={!ready}
+            className="bg-destructive/10 text-destructive hover:bg-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30"
+            onClick={() => {
+              onConfirm();
+              setOpen(false);
+              setConfirmText("");
+            }}
+          >
+            Revoke issuer
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
