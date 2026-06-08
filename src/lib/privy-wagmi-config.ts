@@ -19,13 +19,14 @@
 import { createConfig } from "@privy-io/wagmi";
 import { http } from "wagmi";
 import { mainnet, sepolia, polygon } from "viem/chains";
+import { rpcUrl } from "@/lib/rpc";
 
 const isMainnet = process.env.NEXT_PUBLIC_PRIVY_NETWORK === "mainnet";
 
 const chains = isMainnet ? ([mainnet, polygon] as const) : ([sepolia] as const);
 
 const transports = Object.fromEntries(
-  chains.map((chain) => [chain.id, http()]),
+  chains.map((chain) => [chain.id, http(rpcUrl(chain.id))]),
 ) as Record<(typeof chains)[number]["id"], ReturnType<typeof http>>;
 
 export const privyWagmiConfig = createConfig({

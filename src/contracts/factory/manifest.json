@@ -1,0 +1,86 @@
+{
+  "contractName": "SingleSpvRealEstateFactory",
+  "featureKey": "factory",
+  "contractAddressKey": "factory",
+  "abiPath": "contracts/factory/abi.json",
+  "functions": {
+    "include": [
+      "dealCount",
+      "getDeployedDeal",
+      "implementations",
+      "issuerRegistry",
+      "tokenRegistry",
+      "authority",
+      "upgradeAuthority",
+      "isPaused",
+      "pauseFactory",
+      "unpauseFactory"
+    ],
+    "overrides": {
+      "dealCount": {
+        "displayName": "Deal Count",
+        "description": "Total number of deals deployed by this factory.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "getDeployedDeal": {
+        "displayName": "Get Deployed Deal",
+        "description": "Read the full on-chain DealRecord for a dealId: issuer plus the deployed cluster addresses (token, compliance, identity registry, NAV oracle, distribution, capital-call, access manager, timelock) and deploy metadata.",
+        "dangerous": false,
+        "paramLabels": {
+          "dealId": "Deal ID (bytes32)"
+        }
+      },
+      "implementations": {
+        "displayName": "Implementation Templates",
+        "description": "The implementation/logic addresses the factory clones per deal (identity registry, compliance, NAV oracle, token, distribution, capital-call).",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "issuerRegistry": {
+        "displayName": "Issuer Registry Address",
+        "description": "Address of the IssuerRegistry the factory checks before allowing a deal deployment (only approved issuers may deploy).",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "tokenRegistry": {
+        "displayName": "Token Registry Address",
+        "description": "Address of the TokenRegistry the factory registers each newly deployed deal token into.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "authority": {
+        "displayName": "Access Manager Authority",
+        "description": "Address of the PlatformAccessManager that controls who may call restricted functions.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "upgradeAuthority": {
+        "displayName": "Upgrade Authority",
+        "description": "Address authorized to upgrade this factory's UUPS implementation. Read-only for visibility; changing it is a governance action handled elsewhere.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "isPaused": {
+        "displayName": "Factory Paused?",
+        "description": "Returns true if the factory is paused. While paused, createDeal reverts.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "pauseFactory": {
+        "displayName": "Pause Factory",
+        "description": "Halt new deal deployments. createDeal reverts until the factory is unpaused. Provide a reason for the audit log.",
+        "dangerous": true,
+        "paramLabels": {
+          "reason": "Reason"
+        }
+      },
+      "unpauseFactory": {
+        "displayName": "Unpause Factory",
+        "description": "Resume deal deployments after a pause.",
+        "dangerous": false,
+        "paramLabels": {}
+      }
+    }
+  }
+}

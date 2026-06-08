@@ -21,6 +21,7 @@ export interface ContractAddresses {
   tokenAccessManager: Address | null;
   issuerRegistry: Address | null;
   tokenRegistry: Address | null;
+  factory: Address | null;
   isSupported: boolean;
   chainId: number;
 }
@@ -34,6 +35,7 @@ export function useContracts(): ContractAddresses {
       tokenAccessManager: null,
       issuerRegistry: null,
       tokenRegistry: null,
+      factory: null,
       isSupported: false,
       chainId,
     };
@@ -46,6 +48,7 @@ export function useContracts(): ContractAddresses {
       tokenAccessManager: contracts.tokenAccessManager || null,
       issuerRegistry: contracts.issuerRegistry || null,
       tokenRegistry: contracts.tokenRegistry || null,
+      factory: contracts.factory || null,
       isSupported: true,
       chainId,
     };
@@ -55,6 +58,7 @@ export function useContracts(): ContractAddresses {
       tokenAccessManager: null,
       issuerRegistry: null,
       tokenRegistry: null,
+      factory: null,
       isSupported: false,
       chainId,
     };
@@ -82,6 +86,11 @@ export function useIssuerRegistryAddress(): Address | null {
 export function useTokenRegistryAddress(): Address | null {
   const { tokenRegistry } = useContracts();
   return tokenRegistry;
+}
+
+export function useFactoryAddress(): Address | null {
+  const { factory } = useContracts();
+  return factory;
 }
 
 export function useContractAddress(contractKey: string): Address | null {

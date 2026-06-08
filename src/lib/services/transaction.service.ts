@@ -201,10 +201,24 @@ function buildTransactionRequest(call: ContractCallParams): TransactionRequest {
   return { to: call.address, data: data as Hex, value: call.value, chainId: call.chainId };
 }
 
+// Deep bigint → string so JSON.stringify can transport nested tuple args
+// (e.g. factory.createDeal's DealConfig). The server re-coerces strings back
+// to bigint guided by the ABI types (see /api/tx/prepare).
+function deepSerializeBigInt(value: unknown): unknown {
+  if (typeof value === "bigint") return value.toString();
+  if (Array.isArray(value)) return value.map(deepSerializeBigInt);
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = deepSerializeBigInt(v);
+    }
+    return out;
+  }
+  return value;
+}
+
 function serializeArgsForJson(args: readonly unknown[]): unknown[] {
-  return args.map((arg) =>
-    typeof arg === "bigint" ? arg.toString() : arg
-  );
+  return args.map(deepSerializeBigInt);
 }
 
 function parseUnsignedTxValue(v: unknown): bigint | undefined {

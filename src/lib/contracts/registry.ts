@@ -24,28 +24,47 @@
 // NEXT_PUBLIC_TOKEN_AM_SEPOLIA=0x...
 // NEXT_PUBLIC_ISSUER_REGISTRY_SEPOLIA=0x...
 // NEXT_PUBLIC_TOKEN_REGISTRY_SEPOLIA=0x...
+// NEXT_PUBLIC_FACTORY_SEPOLIA=0x...
 //
 // # Mainnet (chain 1)
 // NEXT_PUBLIC_PLATFORM_AM_MAINNET=0x...
 // NEXT_PUBLIC_TOKEN_AM_MAINNET=0x...
 // NEXT_PUBLIC_ISSUER_REGISTRY_MAINNET=0x...
 // NEXT_PUBLIC_TOKEN_REGISTRY_MAINNET=0x...
+// NEXT_PUBLIC_FACTORY_MAINNET=0x...
 //
 // # Polygon (chain 137)
 // NEXT_PUBLIC_PLATFORM_AM_POLYGON=0x...
 // NEXT_PUBLIC_TOKEN_AM_POLYGON=0x...
 // NEXT_PUBLIC_ISSUER_REGISTRY_POLYGON=0x...
 // NEXT_PUBLIC_TOKEN_REGISTRY_POLYGON=0x...
+// NEXT_PUBLIC_FACTORY_POLYGON=0x...
+
+import { getAddress } from "viem";
 
 type Address = `0x${string}`;
+
+// Normalize an env address to EIP-55 checksum so viem accepts it
+// regardless of how it was pasted (mixed/wrong-case env values otherwise
+// make every read throw "Address must match its checksum counterpart").
+// Returns "" for missing/invalid values so callers fail soft.
+function norm(value: string | undefined): Address {
+  const v = value?.trim();
+  if (!v) return "" as Address;
+  try {
+    return getAddress(v) as Address;
+  } catch {
+    return "" as Address;
+  }
+}
 
 interface ChainContracts {
   platformAccessManager: Address;
   tokenAccessManager: Address;
   issuerRegistry: Address;
   tokenRegistry: Address;
+  factory: Address;
   // Add future contracts here as the platform grows:
-  // factory?: Address;
   // complianceChecker?: Address;
   // proofOfReserve?: Address;
   [key: string]: Address | undefined;
@@ -57,26 +76,29 @@ type Registry = Partial<Record<number, ChainContracts>>;
 const REGISTRY: Registry = {
   // Sepolia testnet
   11155111: {
-    platformAccessManager: (process.env.NEXT_PUBLIC_PLATFORM_AM_SEPOLIA ?? "") as Address,
-    tokenAccessManager: (process.env.NEXT_PUBLIC_TOKEN_AM_SEPOLIA ?? "") as Address,
-    issuerRegistry: (process.env.NEXT_PUBLIC_ISSUER_REGISTRY_SEPOLIA ?? "") as Address,
-    tokenRegistry: (process.env.NEXT_PUBLIC_TOKEN_REGISTRY_SEPOLIA ?? "") as Address,
+    platformAccessManager: norm(process.env.NEXT_PUBLIC_PLATFORM_AM_SEPOLIA),
+    tokenAccessManager: norm(process.env.NEXT_PUBLIC_TOKEN_AM_SEPOLIA),
+    issuerRegistry: norm(process.env.NEXT_PUBLIC_ISSUER_REGISTRY_SEPOLIA),
+    tokenRegistry: norm(process.env.NEXT_PUBLIC_TOKEN_REGISTRY_SEPOLIA),
+    factory: norm(process.env.NEXT_PUBLIC_FACTORY_SEPOLIA),
   },
 
   // Ethereum mainnet
   1: {
-    platformAccessManager: (process.env.NEXT_PUBLIC_PLATFORM_AM_MAINNET ?? "") as Address,
-    tokenAccessManager: (process.env.NEXT_PUBLIC_TOKEN_AM_MAINNET ?? "") as Address,
-    issuerRegistry: (process.env.NEXT_PUBLIC_ISSUER_REGISTRY_MAINNET ?? "") as Address,
-    tokenRegistry: (process.env.NEXT_PUBLIC_TOKEN_REGISTRY_MAINNET ?? "") as Address,
+    platformAccessManager: norm(process.env.NEXT_PUBLIC_PLATFORM_AM_MAINNET),
+    tokenAccessManager: norm(process.env.NEXT_PUBLIC_TOKEN_AM_MAINNET),
+    issuerRegistry: norm(process.env.NEXT_PUBLIC_ISSUER_REGISTRY_MAINNET),
+    tokenRegistry: norm(process.env.NEXT_PUBLIC_TOKEN_REGISTRY_MAINNET),
+    factory: norm(process.env.NEXT_PUBLIC_FACTORY_MAINNET),
   },
 
   // Polygon
   137: {
-    platformAccessManager: (process.env.NEXT_PUBLIC_PLATFORM_AM_POLYGON ?? "") as Address,
-    tokenAccessManager: (process.env.NEXT_PUBLIC_TOKEN_AM_POLYGON ?? "") as Address,
-    issuerRegistry: (process.env.NEXT_PUBLIC_ISSUER_REGISTRY_POLYGON ?? "") as Address,
-    tokenRegistry: (process.env.NEXT_PUBLIC_TOKEN_REGISTRY_POLYGON ?? "") as Address,
+    platformAccessManager: norm(process.env.NEXT_PUBLIC_PLATFORM_AM_POLYGON),
+    tokenAccessManager: norm(process.env.NEXT_PUBLIC_TOKEN_AM_POLYGON),
+    issuerRegistry: norm(process.env.NEXT_PUBLIC_ISSUER_REGISTRY_POLYGON),
+    tokenRegistry: norm(process.env.NEXT_PUBLIC_TOKEN_REGISTRY_POLYGON),
+    factory: norm(process.env.NEXT_PUBLIC_FACTORY_POLYGON),
   },
 };
 
@@ -124,6 +146,10 @@ export function getIssuerRegistryAddress(chainId: number): Address {
 
 export function getTokenRegistryAddress(chainId: number): Address {
   return getContracts(chainId).tokenRegistry;
+}
+
+export function getFactoryAddress(chainId: number): Address {
+  return getContracts(chainId).factory;
 }
 
 export function getContractAddress(chainId: number, contractKey: string): Address | null {

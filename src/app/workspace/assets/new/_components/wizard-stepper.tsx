@@ -15,15 +15,17 @@ interface Step {
 }
 
 const STEPS: Step[] = [
-  { number: 1, label: "Asset Details", description: "Name, type, jurisdiction" },
-  { number: 2, label: "Token Config", description: "Supply, price, decimals" },
-  { number: 3, label: "Documents", description: "Legal & offering docs" },
-  { number: 4, label: "Compliance", description: "KYC, transfer rules" },
-  { number: 5, label: "Review", description: "Review & submit" },
+  { number: 1, label: "Asset & Token", description: "Name, symbol, classification" },
+  { number: 2, label: "Roles", description: "Admins, treasury, timelock" },
+  { number: 3, label: "Share Classes", description: "Classes, sub-tiers, caps" },
+  { number: 4, label: "Valuation", description: "NAV oracle & attestation" },
+  { number: 5, label: "Compliance", description: "Accreditation, hold periods" },
+  { number: 6, label: "Distributions", description: "Calculator, capital calls" },
+  { number: 7, label: "Review", description: "Review & deploy" },
 ];
 
 interface WizardStepperProps {
-  currentStep: number; // 1-5
+  currentStep: number; // 1-7
 }
 
 export function WizardStepper({ currentStep }: WizardStepperProps) {

@@ -17,6 +17,7 @@ import {
   BarChart3,
   AlertTriangle,
   Shield,
+  KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -100,6 +101,13 @@ const NAV_ITEMS: NavItem[] = [
     icon: AlertTriangle,
     section: "admin",
     requires: "ops:flags:edit",
+  },
+  {
+    label: "Permissions",
+    href: `${BASE}/admin/permissions`,
+    icon: KeyRound,
+    section: "admin",
+    requires: "ops:contracts:deploy",
   },
   {
     label: "Team & access",

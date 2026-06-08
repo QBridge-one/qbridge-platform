@@ -2,193 +2,199 @@
 
 // ============================================================
 // app/workspace/assets/new/page.tsx
-// Asset creation wizard — orchestrates all 5 steps
-// State persisted in component (extend with localStorage/DB draft saving)
+//
+// createDeal wizard — one react-hook-form across 7 steps, validated
+// per-step via form.trigger(STEP_FIELDS[step]). The final step builds
+// the DealConfig and deploys through useCreateDeal. Real-estate vertical;
+// the shell is reusable for a future stablecoin factory.
 // ============================================================
 
-import { useState } from "react";
-import { WizardStepper } from "./_components/wizard-stepper";
-import { StepAssetDetails } from "./_components/step-asset-details";
-import { StepTokenConfig } from "./_components/step-token-config";
-import { StepDocuments } from "./_components/step-documents";
-import { StepCompliance } from "./_components/step-compliance";
-import { StepReview } from "./_components/step-review";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form } from "@/components/ui/form";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Save, X } from "lucide-react";
-import Link from "next/link";
-import type {
-  AssetWizardState,
-  AssetDetailsFormData,
-  TokenConfigFormData,
-  DocumentsFormData,
-  ComplianceFormData,
-} from "@/types/assets";
+import { X, ArrowLeft, ArrowRight } from "lucide-react";
 
-// ─── Initial empty state ──────────────────────────────────────
-const INITIAL_STATE: AssetWizardState = {
-  step: 1,
-  assetDetails: {},
-  tokenConfig: {},
-  documents: {},
-  compliance: {},
-};
+import { WizardStepper } from "./_components/wizard-stepper";
+import { StepAssetToken } from "./_components/step-asset-token";
+import { StepRoles } from "./_components/step-roles";
+import { StepClasses } from "./_components/step-classes";
+import { StepValuation } from "./_components/step-valuation";
+import { StepCompliance } from "./_components/step-compliance";
+import { StepDistribution } from "./_components/step-distribution";
+import { StepReview } from "./_components/step-review";
+import { AutofillButton } from "./_components/autofill";
+
+import { dealWizardSchema, STEP_FIELDS, type DealWizardValues } from "@/lib/validators/deal-wizard";
+import { DEAL_CATEGORY } from "@/types/deal";
+import { ZERO_BYTES32, randomBytes32 } from "@/lib/contracts/factory-payload";
+
+const LAST_STEP = 7;
 
 const STEP_TITLES: Record<number, string> = {
-  1: "Asset Details",
-  2: "Token Configuration",
-  3: "Legal Documents",
-  4: "Compliance Rules",
-  5: "Review & Submit",
+  1: "Asset & Token",
+  2: "Roles & Treasury",
+  3: "Share Classes & Caps",
+  4: "Valuation (NAV)",
+  5: "Compliance",
+  6: "Distributions & Capital Calls",
+  7: "Review & Deploy",
 };
 
-// ─── Page ─────────────────────────────────────────────────────
-export default function NewAssetPage() {
-  const [state, setState] = useState<AssetWizardState>(INITIAL_STATE);
+const DEFAULT_VALUES: DealWizardValues = {
+  name: "",
+  symbol: "",
+  decimals: "18",
+  description: "",
+  dealMetadataURI: "",
+  category: DEAL_CATEGORY,
+  assetType: "COMMERCIAL",
+  salt: ZERO_BYTES32,
+  dealAdmin: "",
+  platformProposer: "",
+  issuerExecutor: "",
+  treasury: "",
+  spvLegalEntity: "",
+  timelockMinDelay: "0",
+  globalMintCap: "",
+  unitPriceAtIssuance: "",
+  classes: [
+    {
+      shareClass: 1,
+      classMintCap: "",
+      subscribable: true,
+      managerMintOnly: false,
+      holdPeriodDays: "0",
+      subTiers: [],
+    },
+  ],
+  combinedCapEnabled: false,
+  combinedCap: "0",
+  combinedCapClasses: [],
+  maxNavChangeBps: "1000",
+  stalenessWarningSeconds: "86400",
+  navPerUnitCents: "",
+  asOfTimestamp: "",
+  reportURI: "",
+  reportURIHash: "",
+  methodologyNote: "",
+  accreditationValidity: "31536000",
+  holdPeriodClassA: "0",
+  holdPeriodClassAA: "0",
+  calculator: "",
+  executionGracePeriod: "86400",
+};
 
-  // ── Step navigation ──
-  const goTo = (step: AssetWizardState["step"]) => {
-    setState((prev) => ({ ...prev, step }));
+export default function NewDealPage() {
+  const [step, setStep] = useState(1);
+  const form = useForm<DealWizardValues>({
+    resolver: zodResolver(dealWizardSchema),
+    defaultValues: DEFAULT_VALUES,
+    mode: "onTouched",
+  });
+
+  // Seed client-only defaults (avoids SSR hydration mismatch).
+  useEffect(() => {
+    if (form.getValues("salt") === ZERO_BYTES32) {
+      form.setValue("salt", randomBytes32());
+    }
+    if (!form.getValues("asOfTimestamp")) {
+      // 1h in the past: the NAV oracle rejects asOf > block.timestamp, and
+      // chain time lags wall-clock — "exactly now" reads as the future.
+      form.setValue("asOfTimestamp", String(Math.floor(Date.now() / 1000) - 3600));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const goTo = (next: number) => {
+    setStep(next);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ── Step handlers ──
-  const handleStep1 = (data: AssetDetailsFormData) => {
-    setState((prev) => ({ ...prev, assetDetails: data }));
-    goTo(2);
-  };
-
-  const handleStep2 = (data: TokenConfigFormData) => {
-    setState((prev) => ({ ...prev, tokenConfig: data }));
-    goTo(3);
-  };
-
-  const handleStep3 = (data: DocumentsFormData) => {
-    setState((prev) => ({ ...prev, documents: data }));
-    goTo(4);
-  };
-
-  const handleStep4 = (data: ComplianceFormData) => {
-    setState((prev) => ({ ...prev, compliance: data }));
-    goTo(5);
-  };
-
-  const handleSubmit = async () => {
-    // TODO: POST to /api/assets with state
-    // The API route should:
-    //   1. Validate all fields server-side
-    //   2. Store asset as PENDING_REVIEW in your DB
-    //   3. Notify platform compliance team
-    //   4. Return asset ID
-    await new Promise((resolve) => setTimeout(resolve, 2000)); // simulate API
-    console.log("Submitting asset:", state);
-  };
-
-  const handleSaveDraft = () => {
-    // TODO: save to DB or localStorage
-    console.log("Saving draft:", state);
+  const onNext = async () => {
+    const fields = STEP_FIELDS[step];
+    const ok = fields ? await form.trigger(fields) : true;
+    if (ok) goTo(Math.min(step + 1, LAST_STEP));
   };
 
   return (
     <div className="min-h-full bg-muted/30">
-      {/* ── Page header ── */}
+      {/* Header */}
       <div className="border-b bg-card px-6 py-4">
-        <div className="mx-auto max-w-3xl">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold">Create New Asset</h1>
-                <Badge variant="outline" className="text-[10px]">
-                  {STEP_TITLES[state.step]}
-                </Badge>
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Tokenize a real-world asset on the QBridge launchpad.
-              </p>
-            </div>
-
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
+          <div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSaveDraft}
-                className="hidden sm:flex"
-              >
-                <Save className="mr-1.5 h-3.5 w-3.5" />
-                Save Draft
-              </Button>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/workspace/assets">
-                  <X className="h-4 w-4" />
-                  <span className="sr-only">Cancel</span>
-                </Link>
-              </Button>
+              <h1 className="text-lg font-bold">Create New Deal</h1>
+              <Badge variant="outline" className="text-[10px]">
+                {STEP_TITLES[step]}
+              </Badge>
             </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Deploy a real-estate deal cluster on-chain via the factory.
+            </p>
           </div>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/workspace/assets">
+              <X className="h-4 w-4" />
+              <span className="sr-only">Cancel</span>
+            </Link>
+          </Button>
         </div>
       </div>
 
-      {/* ── Stepper ── */}
+      {/* Stepper */}
       <div className="border-b bg-card px-6 py-5">
         <div className="mx-auto max-w-3xl">
-          <WizardStepper currentStep={state.step} />
+          <WizardStepper currentStep={step} />
         </div>
       </div>
 
-      {/* ── Step content ── */}
+      {/* Content */}
       <div className="px-6 py-8">
         <div className="mx-auto max-w-3xl">
-          <Card className="shadow-sm">
-            <CardContent className="p-6 sm:p-8">
-              {state.step === 1 && (
-                <StepAssetDetails
-                  defaultValues={state.assetDetails}
-                  onNext={handleStep1}
-                />
+          <Form {...form}>
+            <form onSubmit={(e) => e.preventDefault()}>
+              {process.env.NODE_ENV !== "production" && step < LAST_STEP && (
+                <div className="mb-3 flex justify-end">
+                  <AutofillButton step={step} />
+                </div>
               )}
+              <Card className="shadow-sm">
+                <CardContent className="p-6 sm:p-8">
+                  {step === 1 && <StepAssetToken />}
+                  {step === 2 && <StepRoles />}
+                  {step === 3 && <StepClasses />}
+                  {step === 4 && <StepValuation />}
+                  {step === 5 && <StepCompliance />}
+                  {step === 6 && <StepDistribution />}
+                  {step === 7 && <StepReview />}
+                </CardContent>
+              </Card>
 
-              {state.step === 2 && (
-                <StepTokenConfig
-                  defaultValues={state.tokenConfig}
-                  onNext={handleStep2}
-                  onBack={() => goTo(1)}
-                />
-              )}
-
-              {state.step === 3 && (
-                <StepDocuments
-                  defaultValues={state.documents}
-                  onNext={handleStep3}
-                  onBack={() => goTo(2)}
-                />
-              )}
-
-              {state.step === 4 && (
-                <StepCompliance
-                  defaultValues={state.compliance}
-                  onNext={handleStep4}
-                  onBack={() => goTo(3)}
-                />
-              )}
-
-              {state.step === 5 && (
-                <StepReview
-                  state={state}
-                  onBack={() => goTo(4)}
-                  onSubmit={handleSubmit}
-                />
-              )}
-            </CardContent>
-          </Card>
-
-          {/* ── Step footer hint ── */}
-          {state.step < 5 && (
-            <p className="mt-4 text-center text-xs text-muted-foreground">
-              Step {state.step} of 5 · Your progress is saved automatically.
-              You can close and return to this draft.
-            </p>
-          )}
+              {/* Footer nav */}
+              <div className="mt-4 flex items-center justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => goTo(Math.max(step - 1, 1))}
+                  disabled={step === 1}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back
+                </Button>
+                {step < LAST_STEP && (
+                  <Button type="button" size="lg" onClick={onNext}>
+                    Continue
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </form>
+          </Form>
         </div>
       </div>
     </div>

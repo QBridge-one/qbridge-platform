@@ -13,11 +13,43 @@ const CHAIN_MAP: Record<number, Chain> = {
   137: polygon,
 };
 
-function parseArgsFromJson(arr: unknown[]): unknown[] {
-  return arr.map((arg) => {
-    if (typeof arg === "string" && /^\d+$/.test(arg)) return BigInt(arg);
-    return arg;
-  });
+// ABI-guided arg coercion: integers were sent as strings (deep bigint→string
+// on the client). Coerce back to bigint ONLY where the ABI type is an integer,
+// recursing tuples + arrays — so genuine string fields (e.g. a numeric token
+// symbol or tier label) are left untouched.
+type AbiParam = { type: string; components?: AbiParam[] };
+
+function coerceByType(value: unknown, param: AbiParam | undefined): unknown {
+  if (!param) return value;
+  const arrayMatch = param.type.match(/^(.*)(\[\d*\])$/);
+  if (arrayMatch) {
+    const base: AbiParam = { ...param, type: arrayMatch[1] };
+    return Array.isArray(value) ? value.map((v) => coerceByType(v, base)) : value;
+  }
+  if (param.type === "tuple") {
+    const comps = param.components ?? [];
+    if (Array.isArray(value)) return value.map((v, i) => coerceByType(v, comps[i]));
+    if (value && typeof value === "object") {
+      const src = value as Record<string, unknown>;
+      const out: Record<string, unknown> = {};
+      for (const c of comps) out[(c as AbiParam & { name?: string }).name ?? ""] = coerceByType(src[(c as AbiParam & { name?: string }).name ?? ""], c);
+      return out;
+    }
+    return value;
+  }
+  if (param.type.startsWith("uint") || param.type.startsWith("int")) {
+    if (typeof value === "string" && /^-?\d+$/.test(value)) return BigInt(value);
+    if (typeof value === "number") return BigInt(value);
+  }
+  return value;
+}
+
+function coerceArgs(abi: unknown, functionName: string, rawArgs: unknown[]): unknown[] {
+  const fn = (abi as Array<{ type: string; name?: string; inputs?: AbiParam[] }>).find(
+    (x) => x.type === "function" && x.name === functionName,
+  );
+  if (!fn?.inputs) return rawArgs;
+  return rawArgs.map((v, i) => coerceByType(v, fn.inputs![i]));
 }
 
 function parseRequestValue(v: unknown): bigint | undefined {
@@ -53,7 +85,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid caller address" }, { status: 400 });
     }
 
-    const args = parseArgsFromJson(rawArgs as unknown[]);
+    const args = coerceArgs(abi, functionName, rawArgs as unknown[]);
     const numericChainId = Number(chainId);
     if (!Number.isFinite(numericChainId)) {
       return NextResponse.json({ error: "Invalid chainId" }, { status: 400 });
