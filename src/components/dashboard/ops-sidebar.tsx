@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   Shield,
   KeyRound,
+  Factory,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -106,6 +107,13 @@ const NAV_ITEMS: NavItem[] = [
     label: "Permissions",
     href: `${BASE}/admin/permissions`,
     icon: KeyRound,
+    section: "admin",
+    requires: "ops:contracts:deploy",
+  },
+  {
+    label: "Deal factory",
+    href: `${BASE}/admin/factory`,
+    icon: Factory,
     section: "admin",
     requires: "ops:contracts:deploy",
   },
