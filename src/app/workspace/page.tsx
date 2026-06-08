@@ -41,7 +41,7 @@ const ALERTS = [
     id: "2",
     type: "review",
     message: "PCFA asset pending platform compliance review",
-    href: "/workspace/assets/asset-2",
+    href: "/workspace/assets",
     severity: "info" as const,
   },
   {
@@ -178,10 +178,10 @@ export default function DashboardOverviewPage() {
                 description: "Download investor CSV",
               },
               {
-                label: "Pending Review",
+                label: "View Assets",
                 icon: Clock,
-                href: "/workspace/assets/asset-2",
-                description: "PCFA awaiting approval",
+                href: "/workspace/assets",
+                description: "Your deployed deals",
               },
             ].map((action) => {
               const Icon = action.icon;
