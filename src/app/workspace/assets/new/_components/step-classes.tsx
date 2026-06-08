@@ -29,11 +29,12 @@ import { NumberField, TextField, SwitchField, SectionTitle } from "./fields";
 import { SHARE_CLASSES, shareClassLabel, SHARE_CLASS_B } from "@/types/deal";
 import type { DealWizardValues } from "@/lib/validators/deal-wizard";
 
-// tierId ≥ 1; splits must sum to 10000 bps.
+// tierId ≥ 1; splits must sum to 10000 bps. Defaults are valid out of the
+// box so a fresh Class A/AA satisfies the on-chain "≥1 sub-tier" rule.
 const newSubTier = () => ({
   tierId: "1",
-  label: "",
-  minimumCommitment: "",
+  label: "Tier 1",
+  minimumCommitment: "0",
   classSplitBps: "5000",
   classBSplitBps: "5000",
 });
@@ -44,7 +45,7 @@ const newClass = () => ({
   subscribable: true,
   managerMintOnly: false,
   holdPeriodDays: "0",
-  subTiers: [] as ReturnType<typeof newSubTier>[],
+  subTiers: [newSubTier()],
 });
 
 export function StepClasses() {
@@ -217,8 +218,8 @@ function ClassCard({
           </div>
 
           {fields.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              Add at least one sub-tier (required for Class A / AA).
+            <p className="text-xs text-destructive">
+              At least one sub-tier is required for Class A / AA.
             </p>
           )}
 

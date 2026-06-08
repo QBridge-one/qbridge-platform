@@ -7,6 +7,7 @@
 // ============================================================
 
 import { useState } from "react";
+import Link from "next/link";
 import { useFormContext } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,7 +18,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Rocket, CheckCircle2, ChevronDown, AlertTriangle, RefreshCw, Loader2 } from "lucide-react";
+import { Rocket, CheckCircle2, ChevronDown, AlertTriangle, RefreshCw, Loader2, ArrowRight } from "lucide-react";
 import { useCreateDeal } from "@/lib/hooks/useCreateDeal";
 import { useGetDeployedDeal } from "@/lib/generated/factory";
 import { useFactoryAddress } from "@/lib/hooks/useContracts";
@@ -27,7 +28,7 @@ import type { DealWizardValues } from "@/lib/validators/deal-wizard";
 
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
-export function StepReview() {
+export function StepReview({ onDeployed }: { onDeployed?: () => void }) {
   const { getValues, watch } = useFormContext<DealWizardValues>();
   const { createDeal, isLoading, error, hash } = useCreateDeal();
   const factoryAddress = useFactoryAddress();
@@ -47,6 +48,7 @@ export function StepReview() {
       const config = buildDealConfig(getValues());
       await createDeal(config);
       setDeployed(true);
+      onDeployed?.();
       // cluster is readable once the tx is mined; poll a few times
       for (let i = 0; i < 5; i++) {
         const res = await deal.refetch();
@@ -147,6 +149,19 @@ export function StepReview() {
               )}
             </CardContent>
           </Card>
+
+          <div className="flex flex-wrap gap-2">
+            <Button asChild>
+              <Link href="/workspace/assets">
+                Go to My Assets
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+            {/* full reload so the wizard form resets */}
+            <Button variant="outline" onClick={() => window.location.assign("/workspace/assets/new")}>
+              Create another deal
+            </Button>
+          </div>
         </div>
       )}
     </div>

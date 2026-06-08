@@ -69,7 +69,9 @@ const DEFAULT_VALUES: DealWizardValues = {
       subscribable: true,
       managerMintOnly: false,
       holdPeriodDays: "0",
-      subTiers: [],
+      subTiers: [
+        { tierId: "1", label: "Tier 1", minimumCommitment: "0", classSplitBps: "5000", classBSplitBps: "5000" },
+      ],
     },
   ],
   combinedCapEnabled: false,
@@ -91,6 +93,7 @@ const DEFAULT_VALUES: DealWizardValues = {
 
 export default function NewDealPage() {
   const [step, setStep] = useState(1);
+  const [deployed, setDeployed] = useState(false);
   const form = useForm<DealWizardValues>({
     resolver: zodResolver(dealWizardSchema),
     defaultValues: DEFAULT_VALUES,
@@ -149,7 +152,7 @@ export default function NewDealPage() {
       {/* Stepper */}
       <div className="border-b bg-card px-6 py-5">
         <div className="mx-auto max-w-3xl">
-          <WizardStepper currentStep={step} />
+          <WizardStepper currentStep={step} completed={deployed} />
         </div>
       </div>
 
@@ -171,28 +174,30 @@ export default function NewDealPage() {
                   {step === 4 && <StepValuation />}
                   {step === 5 && <StepCompliance />}
                   {step === 6 && <StepDistribution />}
-                  {step === 7 && <StepReview />}
+                  {step === 7 && <StepReview onDeployed={() => setDeployed(true)} />}
                 </CardContent>
               </Card>
 
               {/* Footer nav */}
-              <div className="mt-4 flex items-center justify-between">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => goTo(Math.max(step - 1, 1))}
-                  disabled={step === 1}
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-                {step < LAST_STEP && (
-                  <Button type="button" size="lg" onClick={onNext}>
-                    Continue
-                    <ArrowRight className="ml-2 h-4 w-4" />
+              {!deployed && (
+                <div className="mt-4 flex items-center justify-between">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => goTo(Math.max(step - 1, 1))}
+                    disabled={step === 1}
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
                   </Button>
-                )}
-              </div>
+                  {step < LAST_STEP && (
+                    <Button type="button" size="lg" onClick={onNext}>
+                      Continue
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
             </form>
           </Form>
         </div>

@@ -26,17 +26,19 @@ const STEPS: Step[] = [
 
 interface WizardStepperProps {
   currentStep: number; // 1-7
+  /** When true, every step renders complete (post-deploy). */
+  completed?: boolean;
 }
 
-export function WizardStepper({ currentStep }: WizardStepperProps) {
+export function WizardStepper({ currentStep, completed = false }: WizardStepperProps) {
   return (
     <nav aria-label="Progress" className="w-full">
       {/* Desktop: horizontal stepper */}
       <ol className="hidden sm:flex items-center w-full">
         {STEPS.map((step, index) => {
-          const isComplete = currentStep > step.number;
-          const isCurrent = currentStep === step.number;
-          const isUpcoming = currentStep < step.number;
+          const isComplete = completed || currentStep > step.number;
+          const isCurrent = !completed && currentStep === step.number;
+          const isUpcoming = !completed && currentStep < step.number;
           const isLast = index === STEPS.length - 1;
 
           return (
