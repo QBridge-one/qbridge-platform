@@ -212,14 +212,19 @@ function AssetRow({ row, chainId }: { row: IssuerTokenRow; chainId: number }) {
         </div>
       </TableCell>
       <TableCell className="text-right">
-        {explorer && (
+        <div className="flex items-center justify-end gap-1">
           <Button variant="ghost" size="sm" asChild>
-            <a href={explorer} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-3.5 w-3.5" />
-              <span className="sr-only">View on explorer</span>
-            </a>
+            <Link href={`/workspace/assets/${row.token}`}>View</Link>
           </Button>
-        )}
+          {explorer && (
+            <Button variant="ghost" size="sm" asChild>
+              <a href={explorer} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-3.5 w-3.5" />
+                <span className="sr-only">View on explorer</span>
+              </a>
+            </Button>
+          )}
+        </div>
       </TableCell>
     </TableRow>
   );

@@ -50,7 +50,7 @@ export function RecentDealsCard() {
             {recent.map((d) => (
               <Link
                 key={d.token}
-                href="/workspace/assets"
+                href={`/workspace/assets/${d.token}`}
                 className="group flex items-center gap-4 px-6 py-3.5 transition-colors hover:bg-muted/50"
               >
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-background">
