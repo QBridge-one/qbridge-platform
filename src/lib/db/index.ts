@@ -34,9 +34,15 @@ function makeClient() {
       "DATABASE_URL is not set. Add it to .env.local (see .env.example).",
     );
   }
+  // idle_timeout (s) is tuned low so Neon's compute can auto-suspend
+  // between request bursts. The indexer worker queries the DB only when
+  // a chain advances (see backfill.ts caches), and Next.js route handlers
+  // come in bursts — neither needs warm connections held across long
+  // idle windows. New connections add ~50–100 ms of handshake; negligible
+  // for the surfaces we hit it from.
   return postgres(url, {
     max: 10,
-    idle_timeout: 30,
+    idle_timeout: 5,
     prepare: false,
   });
 }

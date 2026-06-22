@@ -17,9 +17,14 @@
 import type { IndexerChainConfig } from "./chains";
 import { backfillChain } from "./backfill";
 
-/** Default poll cadence — short enough to feel live in the UI, long
- *  enough to stay well under any free RPC's rate limit. */
-const DEFAULT_POLL_MS = 5_000;
+/** Default poll cadence. Sepolia blocks land every ~12 s, so a 30 s cadence
+ *  still surfaces on-chain role changes in the ops UI within one tick of
+ *  inclusion while drastically cutting:
+ *   - free-RPC rate-limit consumption (publicnode etc. throttle aggressively),
+ *   - Neon compute hours — most ticks short-circuit via lastSeenHead in
+ *     backfill.ts, but the *ticks that do find new blocks* now happen
+ *     6× less often. */
+const DEFAULT_POLL_MS = 30_000;
 
 /** Run forever, polling each chain in parallel. Returns a stop()
  *  function the script entrypoint calls on SIGINT/SIGTERM. */

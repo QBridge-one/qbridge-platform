@@ -95,14 +95,19 @@ async function main() {
   // notifications go out without needing a separate Vercel cron / hosted
   // scheduler. Picks the EmailPort the same way container.server.ts
   // does, but inlined so the indexer doesn't drag in Clerk-only deps.
+  // 5 min cadence — each pass runs at least one SELECT against notifications
+  // even when the outbox is empty, so a tighter interval keeps Neon's compute
+  // permanently awake for no user-visible benefit (invitation emails are
+  // never time-critical). Bumping past 5 min risks delaying onboarding
+  // emails noticeably.
   const stopEmailDrain = startEmailOutboxDrainLoop(
     { notification: drizzleNotificationAdapter, email: pickEmailAdapter() },
     {
-      intervalMs: 30_000,
+      intervalMs: 5 * 60_000,
       logger: (msg) => console.log(`[email-outbox] ${msg}`),
     },
   );
-  console.log("[email-outbox] drain loop started (2 min interval)");
+  console.log("[email-outbox] drain loop started (5 min interval)");
 
   const shutdown = (sig: string) => {
     console.log(`[indexer] ${sig} — shutting down`);
