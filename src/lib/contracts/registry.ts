@@ -24,21 +24,24 @@
 // NEXT_PUBLIC_TOKEN_AM_SEPOLIA=0x...
 // NEXT_PUBLIC_ISSUER_REGISTRY_SEPOLIA=0x...
 // NEXT_PUBLIC_TOKEN_REGISTRY_SEPOLIA=0x...
-// NEXT_PUBLIC_FACTORY_SEPOLIA=0x...
+// NEXT_PUBLIC_REAL_ESTATE_FACTORY_SEPOLIA=0x...   (legacy alias: NEXT_PUBLIC_FACTORY_SEPOLIA)
+// NEXT_PUBLIC_STABLECOIN_FACTORY_SEPOLIA=0x...
 //
 // # Mainnet (chain 1)
 // NEXT_PUBLIC_PLATFORM_AM_MAINNET=0x...
 // NEXT_PUBLIC_TOKEN_AM_MAINNET=0x...
 // NEXT_PUBLIC_ISSUER_REGISTRY_MAINNET=0x...
 // NEXT_PUBLIC_TOKEN_REGISTRY_MAINNET=0x...
-// NEXT_PUBLIC_FACTORY_MAINNET=0x...
+// NEXT_PUBLIC_REAL_ESTATE_FACTORY_MAINNET=0x...   (legacy alias: NEXT_PUBLIC_FACTORY_MAINNET)
+// NEXT_PUBLIC_STABLECOIN_FACTORY_MAINNET=0x...
 //
 // # Polygon (chain 137)
 // NEXT_PUBLIC_PLATFORM_AM_POLYGON=0x...
 // NEXT_PUBLIC_TOKEN_AM_POLYGON=0x...
 // NEXT_PUBLIC_ISSUER_REGISTRY_POLYGON=0x...
 // NEXT_PUBLIC_TOKEN_REGISTRY_POLYGON=0x...
-// NEXT_PUBLIC_FACTORY_POLYGON=0x...
+// NEXT_PUBLIC_REAL_ESTATE_FACTORY_POLYGON=0x...   (legacy alias: NEXT_PUBLIC_FACTORY_POLYGON)
+// NEXT_PUBLIC_STABLECOIN_FACTORY_POLYGON=0x...
 
 import { getAddress } from "viem";
 
@@ -63,10 +66,11 @@ interface ChainContracts {
   tokenAccessManager: Address;
   issuerRegistry: Address;
   tokenRegistry: Address;
-  factory: Address;
-  // Add future contracts here as the platform grows:
-  // complianceChecker?: Address;
-  // proofOfReserve?: Address;
+  // Per-product factories (platform singletons). The shared IssuerRegistry +
+  // TokenRegistry above gate/catalog ALL products; each asset class has its
+  // own factory. See src/lib/products/ for the product ↔ factory mapping.
+  realEstateFactory: Address;
+  stablecoinFactory: Address;
   [key: string]: Address | undefined;
 }
 
@@ -80,7 +84,16 @@ const REGISTRY: Registry = {
     tokenAccessManager: norm(process.env.NEXT_PUBLIC_TOKEN_AM_SEPOLIA),
     issuerRegistry: norm(process.env.NEXT_PUBLIC_ISSUER_REGISTRY_SEPOLIA),
     tokenRegistry: norm(process.env.NEXT_PUBLIC_TOKEN_REGISTRY_SEPOLIA),
-    factory: norm(process.env.NEXT_PUBLIC_FACTORY_SEPOLIA),
+    realEstateFactory: norm(
+      process.env.NEXT_PUBLIC_REAL_ESTATE_FACTORY_SEPOLIA ?? process.env.NEXT_PUBLIC_FACTORY_SEPOLIA,
+    ),
+    stablecoinFactory: norm(process.env.NEXT_PUBLIC_STABLECOIN_FACTORY_SEPOLIA),
+    // Reference/demo stablecoin instance (Acme USD, aUSD). Per-instance, not a
+    // singleton — these are the fallback the generated stablecoin-token /
+    // reserve-oracle read hooks use when no explicit address is passed.
+    // Production reads pass the specific instance's addresses instead.
+    stablecoinToken: norm(process.env.NEXT_PUBLIC_STABLECOIN_REF_TOKEN_SEPOLIA),
+    reserveOracle: norm(process.env.NEXT_PUBLIC_STABLECOIN_REF_ORACLE_SEPOLIA),
   },
 
   // Ethereum mainnet
@@ -89,7 +102,10 @@ const REGISTRY: Registry = {
     tokenAccessManager: norm(process.env.NEXT_PUBLIC_TOKEN_AM_MAINNET),
     issuerRegistry: norm(process.env.NEXT_PUBLIC_ISSUER_REGISTRY_MAINNET),
     tokenRegistry: norm(process.env.NEXT_PUBLIC_TOKEN_REGISTRY_MAINNET),
-    factory: norm(process.env.NEXT_PUBLIC_FACTORY_MAINNET),
+    realEstateFactory: norm(
+      process.env.NEXT_PUBLIC_REAL_ESTATE_FACTORY_MAINNET ?? process.env.NEXT_PUBLIC_FACTORY_MAINNET,
+    ),
+    stablecoinFactory: norm(process.env.NEXT_PUBLIC_STABLECOIN_FACTORY_MAINNET),
   },
 
   // Polygon
@@ -98,7 +114,10 @@ const REGISTRY: Registry = {
     tokenAccessManager: norm(process.env.NEXT_PUBLIC_TOKEN_AM_POLYGON),
     issuerRegistry: norm(process.env.NEXT_PUBLIC_ISSUER_REGISTRY_POLYGON),
     tokenRegistry: norm(process.env.NEXT_PUBLIC_TOKEN_REGISTRY_POLYGON),
-    factory: norm(process.env.NEXT_PUBLIC_FACTORY_POLYGON),
+    realEstateFactory: norm(
+      process.env.NEXT_PUBLIC_REAL_ESTATE_FACTORY_POLYGON ?? process.env.NEXT_PUBLIC_FACTORY_POLYGON,
+    ),
+    stablecoinFactory: norm(process.env.NEXT_PUBLIC_STABLECOIN_FACTORY_POLYGON),
   },
 };
 
@@ -148,8 +167,12 @@ export function getTokenRegistryAddress(chainId: number): Address {
   return getContracts(chainId).tokenRegistry;
 }
 
-export function getFactoryAddress(chainId: number): Address {
-  return getContracts(chainId).factory;
+export function getRealEstateFactoryAddress(chainId: number): Address {
+  return getContracts(chainId).realEstateFactory;
+}
+
+export function getStablecoinFactoryAddress(chainId: number): Address {
+  return getContracts(chainId).stablecoinFactory;
 }
 
 export function getContractAddress(chainId: number, contractKey: string): Address | null {

@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/collapsible";
 import { Rocket, CheckCircle2, ChevronDown, AlertTriangle, RefreshCw, Loader2, ArrowRight } from "lucide-react";
 import { useCreateDeal } from "@/lib/hooks/useCreateDeal";
-import { useGetDeployedDeal } from "@/lib/generated/factory";
-import { useFactoryAddress } from "@/lib/hooks/useContracts";
+import { useGetDeployedDeal } from "@/lib/generated/real-estate-factory";
+import { useRealEstateFactoryAddress } from "@/lib/hooks/useContracts";
 import { buildDealConfig, dealIdFromName, ZERO_BYTES32 } from "@/lib/contracts/factory-payload";
 import { DEAL_CLUSTER_LABELS, shareClassLabel } from "@/types/deal";
 import type { DealWizardValues } from "@/lib/validators/deal-wizard";
@@ -31,7 +31,7 @@ const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 export function StepReview({ onDeployed }: { onDeployed?: () => void }) {
   const { getValues, watch } = useFormContext<DealWizardValues>();
   const { createDeal, isLoading, error, hash } = useCreateDeal();
-  const factoryAddress = useFactoryAddress();
+  const factoryAddress = useRealEstateFactoryAddress();
   const [deployed, setDeployed] = useState(false);
 
   const name = watch("name");

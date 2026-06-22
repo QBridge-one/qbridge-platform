@@ -22,7 +22,7 @@ export function useCreateDeal() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [hash, setHash] = useState<Hex | null>(null);
-  const contractAddress = useContractAddress("factory") as Address | null;
+  const contractAddress = useContractAddress("realEstateFactory") as Address | null;
   const chainId = useChainId();
 
   const createDeal = useCallback(

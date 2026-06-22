@@ -35,6 +35,7 @@ import { useState } from "react";
 import { can, type Permission } from "@/lib/auth/permissions";
 import { APP_ROLE_LABELS, type AppRole } from "@/lib/core/identity.types";
 import { isNavItemActive } from "@/lib/nav/is-nav-item-active";
+import { getProduct, type ProductKey } from "@/lib/products";
 
 function workspaceRoleBadge(
   roles: AppRole[] | null,
@@ -54,6 +55,8 @@ interface NavItem {
   section?: string;
   /** If set, item only renders when current appRole has this permission. */
   requires?: Permission;
+  /** If set, item only renders when that product (asset class) is enabled. */
+  product?: ProductKey;
 }
 
 const BASE = "/workspace";
@@ -93,6 +96,22 @@ const NAV_ITEMS: NavItem[] = [
     icon: PlusCircle,
     section: "assets",
     requires: "workspace:assets:create",
+  },
+  {
+    label: "Stablecoins",
+    href: `${BASE}/stablecoins`,
+    icon: Coins,
+    section: "stablecoin",
+    requires: "workspace:view",
+    product: "stablecoin",
+  },
+  {
+    label: "Create Stablecoin",
+    href: `${BASE}/stablecoins/new`,
+    icon: PlusCircle,
+    section: "stablecoin",
+    requires: "workspace:assets:create",
+    product: "stablecoin",
   },
   {
     label: "Token Lifecycle",
@@ -143,6 +162,7 @@ const NAV_ITEMS: NavItem[] = [
 const SECTION_LABELS: Record<string, string> = {
   main: "Overview",
   assets: "Assets",
+  stablecoin: "Stablecoins",
   tokens: "Token Ops",
   compliance: "Compliance",
   settings: "Settings",
@@ -178,10 +198,10 @@ export function WorkspaceSidebar({
   const primaryRole = effectiveRoles?.[0] ?? null;
 
   const visibleItems = NAV_ITEMS.filter(
-    (i) => !i.requires || can(effectiveRoles, i.requires),
+    (i) => (!i.requires || can(effectiveRoles, i.requires)) && (!i.product || getProduct(i.product).enabled),
   );
 
-  const sections = ["main", "assets", "tokens", "compliance", "settings"];
+  const sections = ["main", "assets", "stablecoin", "tokens", "compliance", "settings"];
   const groupedItems = sections.reduce<Record<string, NavItem[]>>(
     (acc, section) => {
       const items = visibleItems.filter((i) => i.section === section);

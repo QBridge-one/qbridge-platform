@@ -44,13 +44,30 @@ src/lib/ports/           interfaces only (import only from lib/core/)
 src/lib/adapters/        implementations (one adapter ↔ one port)
 src/lib/container.ts          wires client-safe adapters  ← only place that imports concrete adapters
 src/lib/container.server.ts   wires server-only adapters (identity, org, wallet-binding, audit, …)
+src/lib/products/             product (asset-class) registry  ← only place that declares products
 ```
+
+### Products (asset classes)
+
+QBridge is **one platform, multiple asset classes** (real estate, stablecoin, …),
+mirroring the on-chain split: **shared platform singletons** (`IssuerRegistry`,
+`TokenRegistry`, `IdentityRegistry`, `PlatformAccessManager`) + a **separate
+factory/token/compliance cluster per product**. See
+`qbridge-smart-contracts/docs/stablecoin-overview.md`.
+
+- Per-asset-class business logic lives behind a **product module**; shared infra
+  (identity, wallet, IssuerRegistry, TokenRegistry, audit) is reused, never forked.
+- `TokenRegistry` self-tags every token with `(category, assetType)`, so one
+  `tokensByIssuer(X)` spans all products. Classify a token into its product via
+  `productByCategoryHash()` in `src/lib/products/`.
 
 ## Hard rules (do not break)
 
 - **Never import a concrete adapter outside `container.ts` / `container.server.ts`.**
 - **Never import a wallet vendor SDK (`@privy-io/react-auth`, `wagmi`) in components** — use `useWallet()` from `src/lib/hooks/useWallet.ts`.
 - **Never edit `src/lib/generated/**`** — re-run `yarn generate`. Don't import `abi.json` in components; use the generated typed constants / `registry.ts`. Don't hardcode contract addresses.
+- **Factories are per-product, not singular.** Each asset class has its own factory (`realEstateFactory`, `stablecoinFactory`, …) keyed in `lib/contracts/registry.ts`. Resolve addresses per product; never assume "the factory."
+- **Declare products only in `src/lib/products/`.** Adding/enabling an asset class happens there (the product registry), the way concrete adapters are wired only in `container.ts`.
 - Never skip layers (UI → hooks → services → ports → adapters). Adapters translate; services orchestrate; adapters catch and `normalizeToDomainError(err)`; UI only sees `DomainError`.
 - No `localStorage`/`sessionStorage`; no external state lib (wagmi + `useState` only).
 - **Never install an npm package without asking.** Keep ABIs/app code under `src/`.
@@ -85,6 +102,7 @@ src/lib/container.server.ts   wires server-only adapters (identity, org, wallet-
 ## Docs
 
 - `docs/platform-contracts.md` — **contract topology** (platform singletons vs per-deal clusters), Sepolia addresses, how each class is integrated. Read before wiring a new contract.
+- `docs/stablecoin-product.md` — **stablecoin asset class** (the multi-product architecture, `src/lib/products/`, contract wiring, UI surfaces, the one-time `createStablecoin` permission setup).
 - `Docs/WALLET-PROVIDER.md` — wallet architecture (Privy, binding, sponsorship)
 - `Docs/IDENTITY.md` — Clerk identity, planes, RBAC
 - `docs/issuer-registry-integration.md` · `docs/issuer-registry-lifecycle.md` ·

@@ -18,7 +18,8 @@ The deal token is a **custom ERC-20**, **not** an ERC-3643 implementation — it
 registry + compliance checker gate transfers, so it interoperates with DeFi /
 venues that expect ERC-3643-style permissioned tokens. Conceptually very similar
 to T-REX (whitelisted holders, on-transfer compliance), just a leaner custom base.
-A future **stablecoin** vertical will be a separate factory + ecosystem.
+The **stablecoin** vertical is a separate factory + ecosystem — now integrated;
+see [`stablecoin-product.md`](./stablecoin-product.md).
 
 ---
 

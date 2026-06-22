@@ -1,0 +1,86 @@
+{
+  "contractName": "StablecoinFactory",
+  "featureKey": "stablecoin-factory",
+  "contractAddressKey": "stablecoinFactory",
+  "abiPath": "contracts/stablecoin-factory/abi.json",
+  "functions": {
+    "include": [
+      "stablecoinCount",
+      "getDeployedStablecoin",
+      "implementations",
+      "issuerRegistry",
+      "tokenRegistry",
+      "authority",
+      "upgradeAuthority",
+      "isPaused",
+      "pauseFactory",
+      "unpauseFactory"
+    ],
+    "overrides": {
+      "stablecoinCount": {
+        "displayName": "Stablecoin Count",
+        "description": "Total number of stablecoins deployed by this factory.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "getDeployedStablecoin": {
+        "displayName": "Get Deployed Stablecoin",
+        "description": "Read the on-chain record for a stablecoinId: issuer plus the deployed cluster addresses (token, compliance, identity registry, reserve oracle, access manager, timelock) and deploy metadata.",
+        "dangerous": false,
+        "paramLabels": {
+          "stablecoinId": "Stablecoin ID (bytes32)"
+        }
+      },
+      "implementations": {
+        "displayName": "Implementation Templates",
+        "description": "The implementation/logic addresses the factory clones per stablecoin (identity registry, reserve oracle, compliance, token).",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "issuerRegistry": {
+        "displayName": "Issuer Registry Address",
+        "description": "Address of the shared IssuerRegistry the factory checks before allowing a deployment (only approved issuers may deploy). Same registry as the real-estate factory.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "tokenRegistry": {
+        "displayName": "Token Registry Address",
+        "description": "Address of the shared multi-factory TokenRegistry each newly deployed stablecoin is registered into.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "authority": {
+        "displayName": "Access Manager Authority",
+        "description": "Address of the PlatformAccessManager that controls who may call restricted functions.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "upgradeAuthority": {
+        "displayName": "Upgrade Authority",
+        "description": "Address authorized to upgrade this factory's UUPS implementation. Read-only for visibility; changing it is a governance action handled elsewhere.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "isPaused": {
+        "displayName": "Factory Paused?",
+        "description": "Returns true if the factory is paused. While paused, createStablecoin reverts.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "pauseFactory": {
+        "displayName": "Pause Factory",
+        "description": "Halt new stablecoin deployments. createStablecoin reverts until the factory is unpaused. Provide a reason for the audit log.",
+        "dangerous": true,
+        "paramLabels": {
+          "reason": "Reason"
+        }
+      },
+      "unpauseFactory": {
+        "displayName": "Unpause Factory",
+        "description": "Resume stablecoin deployments after a pause.",
+        "dangerous": false,
+        "paramLabels": {}
+      }
+    }
+  }
+}

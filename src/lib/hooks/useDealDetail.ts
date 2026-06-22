@@ -12,7 +12,7 @@
 
 import { useReadContracts } from "wagmi";
 import { useGetToken } from "@/lib/generated/token-registry";
-import { useGetDeployedDeal } from "@/lib/generated/factory";
+import { useGetDeployedDeal } from "@/lib/generated/real-estate-factory";
 import { dealIdFromName, ZERO_BYTES32 } from "@/lib/contracts/factory-payload";
 import type { Address, Hex } from "@/lib/core/types";
 import type { DealRecord } from "@/types/deal";

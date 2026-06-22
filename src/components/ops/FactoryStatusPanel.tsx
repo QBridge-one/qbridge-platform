@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Pause, Play, Copy, ExternalLink, RefreshCw, ShieldAlert } from "lucide-react";
-import { useContracts, useFactoryAddress } from "@/lib/hooks/useContracts";
+import { useContracts, useRealEstateFactoryAddress } from "@/lib/hooks/useContracts";
 import {
   useIsPaused,
   useDealCount,
@@ -35,14 +35,14 @@ import {
   useUpgradeAuthority,
   usePauseFactory,
   useUnpauseFactory,
-} from "@/lib/generated/factory";
+} from "@/lib/generated/real-estate-factory";
 import { shortAddress } from "@/lib/contracts/deal-labels";
 import { explorerAddressUrl } from "@/lib/explorer-urls";
 import type { Address } from "@/lib/core/types";
 
 export function FactoryStatusPanel() {
   const { chainId } = useContracts();
-  const factory = useFactoryAddress();
+  const factory = useRealEstateFactoryAddress();
 
   const isPaused = useIsPaused(undefined);
   const dealCount = useDealCount(undefined);

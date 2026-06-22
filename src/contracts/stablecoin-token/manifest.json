@@ -1,0 +1,150 @@
+{
+  "contractName": "StablecoinToken",
+  "featureKey": "stablecoin-token",
+  "contractAddressKey": "stablecoinToken",
+  "abiPath": "contracts/stablecoin-token/abi.json",
+  "functions": {
+    "include": [
+      "name",
+      "symbol",
+      "decimals",
+      "description",
+      "totalSupply",
+      "balanceOf",
+      "mintCap",
+      "mintableHeadroom",
+      "reserveOracle",
+      "maxReserveAttestationAge",
+      "treasury",
+      "complianceChecker",
+      "identityRegistry",
+      "paused",
+      "isFrozen",
+      "heldBalanceOf",
+      "spendableBalanceOf",
+      "issue",
+      "mint",
+      "requestRedemption",
+      "fulfillRedemption",
+      "cancelRedemption",
+      "freeze",
+      "unfreeze",
+      "forceBurn",
+      "pause",
+      "unpause",
+      "setReserveOracle",
+      "setMaxReserveAttestationAge",
+      "setMintCap"
+    ],
+    "overrides": {
+      "mintableHeadroom": {
+        "displayName": "Mintable Headroom",
+        "description": "How much more can be issued right now: attested reserves minus circulating supply (0 if supply already meets or exceeds reserves).",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "balanceOf": {
+        "displayName": "Balance Of",
+        "description": "Token balance of a holder (includes any held/locked amount).",
+        "dangerous": false,
+        "paramLabels": { "account": "Wallet Address" }
+      },
+      "spendableBalanceOf": {
+        "displayName": "Spendable Balance",
+        "description": "Balance the holder can transfer right now (total minus held/locked amount).",
+        "dangerous": false,
+        "paramLabels": { "account": "Wallet Address" }
+      },
+      "heldBalanceOf": {
+        "displayName": "Held Balance",
+        "description": "Amount currently locked by holds (e.g. pending redemptions).",
+        "dangerous": false,
+        "paramLabels": { "account": "Wallet Address" }
+      },
+      "isFrozen": {
+        "displayName": "Is Frozen?",
+        "description": "Whether a holder is frozen (cannot send/receive; force-burn still works).",
+        "dangerous": false,
+        "paramLabels": { "account": "Wallet Address" }
+      },
+      "issue": {
+        "displayName": "Issue",
+        "description": "Mint new stablecoin against attested reserves to a compliant recipient. Reverts unless proof-of-reserves covers the new supply. MINTER role.",
+        "dangerous": true,
+        "paramLabels": { "to": "Recipient", "amount": "Amount (base units)", "mintReference": "Mint Reference (wire ID hash)" }
+      },
+      "mint": {
+        "displayName": "Mint",
+        "description": "Alias for Issue with an empty reference. Routes through the same proof-of-reserves + compliance gate. MINTER role.",
+        "dangerous": true,
+        "paramLabels": { "to": "Recipient", "amount": "Amount (base units)" }
+      },
+      "requestRedemption": {
+        "displayName": "Request Redemption",
+        "description": "Holder self-service: lock your own tokens pending an off-chain fiat payout. Does not burn.",
+        "dangerous": false,
+        "paramLabels": { "amount": "Amount (base units)", "redemptionReference": "Redemption Reference" }
+      },
+      "fulfillRedemption": {
+        "displayName": "Fulfill Redemption",
+        "description": "Settle a redemption after the fiat wire: release the hold and burn the tokens. REDEEMER role.",
+        "dangerous": true,
+        "paramLabels": { "holder": "Holder", "amount": "Amount (base units)", "redemptionReference": "Redemption Reference" }
+      },
+      "cancelRedemption": {
+        "displayName": "Cancel Redemption",
+        "description": "Release a redemption hold without burning (request rejected or withdrawn). REDEEMER role.",
+        "dangerous": false,
+        "paramLabels": { "holder": "Holder", "amount": "Amount (base units)", "redemptionReference": "Redemption Reference" }
+      },
+      "freeze": {
+        "displayName": "Freeze Holder",
+        "description": "Block a holder from sending/receiving (OFAC / court order). Force-burn still works against frozen holders.",
+        "dangerous": true,
+        "paramLabels": { "account": "Wallet Address" }
+      },
+      "unfreeze": {
+        "displayName": "Unfreeze Holder",
+        "description": "Lift a freeze on a holder.",
+        "dangerous": false,
+        "paramLabels": { "account": "Wallet Address" }
+      },
+      "forceBurn": {
+        "displayName": "Force Burn (Seize)",
+        "description": "Burn tokens from a holder bypassing compliance — the on-chain leg of a seizure/settlement. High risk.",
+        "dangerous": true,
+        "paramLabels": { "from": "Wallet Address", "amount": "Amount (base units)" }
+      },
+      "pause": {
+        "displayName": "Pause Token",
+        "description": "Pause all transfers/issuance/redemptions for this stablecoin.",
+        "dangerous": true,
+        "paramLabels": {}
+      },
+      "unpause": {
+        "displayName": "Unpause Token",
+        "description": "Resume activity after a pause.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "setReserveOracle": {
+        "displayName": "Set Reserve Oracle",
+        "description": "Swap the proof-of-reserves oracle (e.g. to an auditor multisig or Chainlink PoR feed) without changing mint logic.",
+        "dangerous": true,
+        "paramLabels": { "newOracle": "Oracle Address" }
+      },
+      "setMaxReserveAttestationAge": {
+        "displayName": "Set Max Attestation Age",
+        "description": "Freshness window (seconds) for reserve attestations before issuance halts. 0 disables the staleness gate.",
+        "dangerous": true,
+        "paramLabels": { "newSeconds": "Max Age (seconds)" }
+      },
+      "setMintCap": {
+        "displayName": "Set Mint Cap",
+        "description": "Hard cap on total supply at the base level (reserves still cap issuance). 0 = unlimited at the base level.",
+        "dangerous": true,
+        "paramLabels": { "newCap": "Mint Cap (base units)" }
+      }
+    }
+  }
+}

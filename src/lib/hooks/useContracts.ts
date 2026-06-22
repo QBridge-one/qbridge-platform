@@ -21,7 +21,8 @@ export interface ContractAddresses {
   tokenAccessManager: Address | null;
   issuerRegistry: Address | null;
   tokenRegistry: Address | null;
-  factory: Address | null;
+  realEstateFactory: Address | null;
+  stablecoinFactory: Address | null;
   isSupported: boolean;
   chainId: number;
 }
@@ -35,7 +36,8 @@ export function useContracts(): ContractAddresses {
       tokenAccessManager: null,
       issuerRegistry: null,
       tokenRegistry: null,
-      factory: null,
+      realEstateFactory: null,
+      stablecoinFactory: null,
       isSupported: false,
       chainId,
     };
@@ -48,7 +50,8 @@ export function useContracts(): ContractAddresses {
       tokenAccessManager: contracts.tokenAccessManager || null,
       issuerRegistry: contracts.issuerRegistry || null,
       tokenRegistry: contracts.tokenRegistry || null,
-      factory: contracts.factory || null,
+      realEstateFactory: contracts.realEstateFactory || null,
+      stablecoinFactory: contracts.stablecoinFactory || null,
       isSupported: true,
       chainId,
     };
@@ -58,7 +61,8 @@ export function useContracts(): ContractAddresses {
       tokenAccessManager: null,
       issuerRegistry: null,
       tokenRegistry: null,
-      factory: null,
+      realEstateFactory: null,
+      stablecoinFactory: null,
       isSupported: false,
       chainId,
     };
@@ -88,9 +92,14 @@ export function useTokenRegistryAddress(): Address | null {
   return tokenRegistry;
 }
 
-export function useFactoryAddress(): Address | null {
-  const { factory } = useContracts();
-  return factory;
+export function useRealEstateFactoryAddress(): Address | null {
+  const { realEstateFactory } = useContracts();
+  return realEstateFactory;
+}
+
+export function useStablecoinFactoryAddress(): Address | null {
+  const { stablecoinFactory } = useContracts();
+  return stablecoinFactory;
 }
 
 export function useContractAddress(contractKey: string): Address | null {

@@ -1,0 +1,97 @@
+{
+  "contractName": "ReserveOracle",
+  "featureKey": "reserve-oracle",
+  "contractAddressKey": "reserveOracle",
+  "abiPath": "contracts/reserve-oracle/abi.json",
+  "functions": {
+    "include": [
+      "attestedReserves",
+      "getCurrentReserves",
+      "isStale",
+      "getAttestation",
+      "getAttestationCount",
+      "getLatestAttestationId",
+      "tokenReference",
+      "stalenessWarningSeconds",
+      "maxReserveChangeBps",
+      "attestReserves",
+      "rescindAttestation",
+      "setStalenessWarningSeconds",
+      "setMaxReserveChangeBps"
+    ],
+    "overrides": {
+      "attestedReserves": {
+        "displayName": "Attested Reserves",
+        "description": "Latest attested reserve total (token base units) that gates issuance. 0 if there is no live attestation.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "getCurrentReserves": {
+        "displayName": "Current Reserves",
+        "description": "The current attested reserve figure.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "isStale": {
+        "displayName": "Is Stale?",
+        "description": "Whether the latest attestation is older than the given freshness window.",
+        "dangerous": false,
+        "paramLabels": { "maxAgeSeconds": "Max Age (seconds)" }
+      },
+      "getAttestation": {
+        "displayName": "Get Attestation",
+        "description": "Read a single immutable attestation record by id.",
+        "dangerous": false,
+        "paramLabels": { "attestationId": "Attestation ID" }
+      },
+      "getAttestationCount": {
+        "displayName": "Attestation Count",
+        "description": "Total number of attestations recorded.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "getLatestAttestationId": {
+        "displayName": "Latest Attestation ID",
+        "description": "Id of the most recent attestation.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "tokenReference": {
+        "displayName": "Token Reference",
+        "description": "The stablecoin token this oracle attests reserves for.",
+        "dangerous": false,
+        "paramLabels": {}
+      },
+      "attestReserves": {
+        "displayName": "Attest Reserves",
+        "description": "Record a new proof-of-reserves total. Must be a different account from the MINTER (separation of duties). Monotonic as-of timestamp; report hash binds to the off-chain attestation document. RESERVE_ATTESTER role.",
+        "dangerous": true,
+        "paramLabels": {
+          "reserveAmount": "Reserve Amount (base units)",
+          "asOfTimestamp": "As-Of Timestamp",
+          "reportURIHash": "Report Hash (bytes32)",
+          "reportURI": "Report URI",
+          "attestorNote": "Attestor Note"
+        }
+      },
+      "rescindAttestation": {
+        "displayName": "Rescind Attestation",
+        "description": "Invalidate a prior attestation (rescind, never delete). Provide a reason for the audit trail.",
+        "dangerous": true,
+        "paramLabels": { "attestationId": "Attestation ID", "reason": "Reason" }
+      },
+      "setStalenessWarningSeconds": {
+        "displayName": "Set Staleness Warning",
+        "description": "Threshold (seconds) at which an attestation is flagged as ageing.",
+        "dangerous": true,
+        "paramLabels": { "newSeconds": "Seconds" }
+      },
+      "setMaxReserveChangeBps": {
+        "displayName": "Set Max Reserve Change (bps)",
+        "description": "Guardrail on how much a single attestation may move reserves, in basis points.",
+        "dangerous": true,
+        "paramLabels": { "newBps": "Max Change (bps)" }
+      }
+    }
+  }
+}

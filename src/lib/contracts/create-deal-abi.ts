@@ -1,14 +1,14 @@
 // ============================================================
 // lib/contracts/create-deal-abi.ts
 //
-// AUTO-GENERATED. createDeal function (from src/contracts/factory/abi.json)
+// AUTO-GENERATED. createDeal function (from src/contracts/real-estate-factory/abi.json)
 // + the UNION of every error def across the qbridge-smart-contracts
 // artifacts, so a createDeal revert from any cluster contract/library
 // (token, oracle, compliance, identity, distribution, capital-call, libs,
 // OZ) decodes to a named error instead of a raw selector.
 //
 // createDeal is excluded from the codegen manifest (its nested DealConfig
-// tuple would produce a useless form), so the generated FACTORY_ABI omits
+// tuple would produce a useless form), so the generated REAL_ESTATE_FACTORY_ABI omits
 // it; useCreateDeal encodes against this fragment.
 //
 // Regenerate: node script over <contracts>/out (see git history of this file).
