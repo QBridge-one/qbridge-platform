@@ -179,6 +179,8 @@ export default function StablecoinDetailPage() {
             <StablecoinManagePanel
               token={token}
               oracle={s.oracle}
+              compliance={s.compliance}
+              identity={s.identity}
               decimals={s.decimals}
               symbol={s.symbol}
               onChanged={s.refetch}

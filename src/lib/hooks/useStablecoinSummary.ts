@@ -19,6 +19,8 @@ import {
   useTotalSupply,
   useMintableHeadroom,
   useReserveOracle,
+  useComplianceChecker,
+  useIdentityRegistry,
   useMaxReserveAttestationAge,
   usePaused,
 } from "@/lib/generated/stablecoin-token";
@@ -32,6 +34,8 @@ import type { Address } from "@/lib/core/types";
 export interface StablecoinSummary {
   token: Address | null;
   oracle: Address | null;
+  compliance: Address | null;
+  identity: Address | null;
   name?: string;
   symbol?: string;
   decimals?: number;
@@ -59,8 +63,12 @@ export function useStablecoinSummary(token: Address | null): StablecoinSummary {
   const headroom = useMintableHeadroom(token);
   const maxAge = useMaxReserveAttestationAge(token);
   const oracleRead = useReserveOracle(token);
+  const complianceRead = useComplianceChecker(token);
+  const identityRead = useIdentityRegistry(token);
 
   const oracle = (oracleRead.data as Address | undefined) ?? null;
+  const compliance = (complianceRead.data as Address | undefined) ?? null;
+  const identity = (identityRead.data as Address | undefined) ?? null;
 
   const reserves = useAttestedReserves(oracle);
   const latestId = useGetLatestAttestationId(oracle);
@@ -78,6 +86,8 @@ export function useStablecoinSummary(token: Address | null): StablecoinSummary {
   return {
     token,
     oracle,
+    compliance,
+    identity,
     name: name.data as string | undefined,
     symbol: symbol.data as string | undefined,
     decimals: decimals.data as number | undefined,
@@ -109,6 +119,8 @@ export function useStablecoinSummary(token: Address | null): StablecoinSummary {
       headroom.refetch();
       maxAge.refetch();
       oracleRead.refetch();
+      complianceRead.refetch();
+      identityRead.refetch();
       reserves.refetch();
       latestId.refetch();
       stale.refetch();
