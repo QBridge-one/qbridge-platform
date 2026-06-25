@@ -44,6 +44,7 @@ export const stablecoinWizardSchema = z.object({
   assetType: z.string().min(1, "Asset type is required"),
   treasury: addressSchema,
   globalMintCap: uintStr("Global mint cap must be a whole number (0 = unlimited at base)"),
+  transferPolicy: z.enum(["0", "1"], { message: "Choose a transfer policy" }),
   salt: bytes32Schema,
 
   // Step 2 — Proof-of-reserves
@@ -61,7 +62,7 @@ export const stablecoinWizardSchema = z.object({
 export type StablecoinWizardValues = z.infer<typeof stablecoinWizardSchema>;
 
 export const STEP_FIELDS: Record<number, (keyof StablecoinWizardValues)[]> = {
-  1: ["name", "symbol", "decimals", "description", "category", "assetType", "treasury", "globalMintCap", "salt"],
+  1: ["name", "symbol", "decimals", "description", "category", "assetType", "treasury", "globalMintCap", "transferPolicy", "salt"],
   2: ["maxReserveAttestationAge", "maxReserveChangeBps", "stalenessWarningSeconds"],
   3: ["dealAdmin", "platformProposer", "issuerExecutor", "timelockMinDelay"],
 };

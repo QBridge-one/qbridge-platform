@@ -46,5 +46,8 @@ export function buildStablecoinConfig(values: StablecoinWizardValues): Stablecoi
       maxReserveChangeBps: BigInt(values.maxReserveChangeBps),
       stalenessWarningSeconds: BigInt(values.stalenessWarningSeconds),
     },
+    complianceParams: {
+      transferPolicy: Number(values.transferPolicy),
+    },
   };
 }

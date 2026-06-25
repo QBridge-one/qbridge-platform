@@ -121,6 +121,18 @@ export const CREATE_STABLECOIN_ABI = [
                 "internalType": "uint64"
               }
             ]
+          },
+          {
+            "name": "complianceParams",
+            "type": "tuple",
+            "internalType": "struct StablecoinFactory.ComplianceInitParamsForFactory",
+            "components": [
+              {
+                "name": "transferPolicy",
+                "type": "uint8",
+                "internalType": "enum StablecoinComplianceChecker.TransferPolicy"
+              }
+            ]
           }
         ]
       }

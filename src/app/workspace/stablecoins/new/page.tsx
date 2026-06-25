@@ -57,7 +57,7 @@ import {
   STEP_FIELDS,
   type StablecoinWizardValues,
 } from "@/lib/validators/stablecoin-wizard";
-import { STABLECOIN_CATEGORY, STABLECOIN_ASSET_TYPES, STABLECOIN_CLUSTER_LABELS } from "@/types/stablecoin";
+import { STABLECOIN_CATEGORY, STABLECOIN_ASSET_TYPES, STABLECOIN_CLUSTER_LABELS, TRANSFER_POLICY_OPTIONS } from "@/types/stablecoin";
 import { TextField, AddressField, NumberField, TextAreaField, SectionTitle } from "./_components/fields";
 
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
@@ -79,6 +79,7 @@ const DEFAULT_VALUES: StablecoinWizardValues = {
   assetType: "USD_FIAT",
   treasury: "",
   globalMintCap: "0",
+  transferPolicy: "1",
   salt: ZERO_BYTES32,
   maxReserveAttestationAge: "86400",
   maxReserveChangeBps: "1000",
@@ -288,6 +289,34 @@ function StepToken() {
 
       <AddressField name="treasury" label="Treasury" required description="Receives fees / holds protocol balances for this token." />
 
+      <div className="space-y-4">
+        <SectionTitle
+          title="Transfer policy"
+          hint="Governs P2P transfers only — issuance & redemption are KYC-gated regardless."
+        />
+        <FormField
+          control={control}
+          name="transferPolicy"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Holder model</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                <SelectContent>
+                  {TRANSFER_POLICY_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {TRANSFER_POLICY_OPTIONS.find((o) => o.value === field.value)?.hint}
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
       {/* Salt + computed bytes32 preview */}
       <div className="space-y-3 rounded-lg border bg-muted/40 p-4">
         <div className="flex items-center justify-between">
@@ -406,6 +435,7 @@ function StepReview({ onDeployed }: { onDeployed?: () => void }) {
               <Separator />
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
                 <Item label="Global mint cap" value={v.globalMintCap === "0" ? "Unlimited (base)" : v.globalMintCap} />
+                <Item label="Transfer policy" value={TRANSFER_POLICY_OPTIONS.find((o) => o.value === v.transferPolicy)?.label.split(" (")[0] ?? v.transferPolicy} />
                 <Item label="Max attestation age" value={`${v.maxReserveAttestationAge}s`} />
                 <Item label="Max reserve change" value={`${v.maxReserveChangeBps} bps`} />
                 <Item label="Staleness warning" value={`${v.stalenessWarningSeconds}s`} />

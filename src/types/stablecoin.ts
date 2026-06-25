@@ -19,6 +19,19 @@ export const STABLECOIN_ASSET_TYPES = [
   { value: "GBP_FIAT", label: "GBP (fiat-backed)" },
 ] as const;
 
+/**
+ * On-chain TransferPolicy enum (StablecoinComplianceChecker). Governs P2P
+ * transfers only — issuance and redemption are KYC-gated regardless.
+ *   0 Allowlist — both parties must be KYC-verified + jurisdiction-approved.
+ *   1 Blocklist — open circulation; only blocked/sanctioned addresses rejected.
+ */
+export const TRANSFER_POLICY = { Allowlist: 0, Blocklist: 1 } as const;
+
+export const TRANSFER_POLICY_OPTIONS = [
+  { value: "1", label: "Blocklist (open — USDC/USDT model)", hint: "Anyone can hold/transfer except blocked/sanctioned addresses." },
+  { value: "0", label: "Allowlist (permissioned)", hint: "Every holder must be KYC-verified + jurisdiction-approved to transfer." },
+] as const;
+
 export interface StablecoinTokenParams {
   name: string;
   symbol: string;
@@ -34,6 +47,11 @@ export interface StablecoinReserveOracleParams {
   stalenessWarningSeconds: bigint;
 }
 
+export interface StablecoinComplianceParams {
+  /** TransferPolicy enum: 0 Allowlist | 1 Blocklist. */
+  transferPolicy: number;
+}
+
 export interface StablecoinConfig {
   stablecoinId: Hex;
   salt: Hex;
@@ -45,6 +63,7 @@ export interface StablecoinConfig {
   timelockMinDelay: bigint;
   tokenParams: StablecoinTokenParams;
   reserveOracleParams: StablecoinReserveOracleParams;
+  complianceParams: StablecoinComplianceParams;
 }
 
 /** Field keys on getDeployedStablecoin's record → human labels (for the deploy summary). */
