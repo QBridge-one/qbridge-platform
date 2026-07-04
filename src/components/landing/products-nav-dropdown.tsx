@@ -1,19 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { T } from "./shared";
 import { StatusBadge } from "./products-grid";
 import { MARKETING_PRODUCTS } from "@/lib/marketing/products";
 
 // ─── Desktop: hover dropdown ──────────────────────────────────
+// The nav bar clips overflow, so the panel is rendered position:fixed
+// (anchored under the trigger's right edge) to escape the clip and stay
+// on-screen. The panel is a DOM descendant of the wrapper, so the
+// wrapper's onMouseLeave only fires when leaving the whole subtree —
+// hover survives moving onto the panel.
 export function ProductsNavDropdown({ linkStyle }: { linkStyle: React.CSSProperties }) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; right: number }>({ top: 68, right: 0 });
+  const ref = useRef<HTMLDivElement>(null);
+
+  const openMenu = () => {
+    const el = ref.current;
+    if (el) {
+      const r = el.getBoundingClientRect();
+      setPos({ top: r.bottom, right: window.innerWidth - r.right });
+    }
+    setOpen(true);
+  };
 
   return (
     <div
+      ref={ref}
       style={{ position: "relative" }}
-      onMouseEnter={() => setOpen(true)}
+      onMouseEnter={openMenu}
       onMouseLeave={() => setOpen(false)}
     >
       <Link
@@ -27,11 +44,11 @@ export function ProductsNavDropdown({ linkStyle }: { linkStyle: React.CSSPropert
       {/* paddingTop bridges the gap so the panel stays open while moving the cursor onto it */}
       <div
         style={{
-          position: "absolute",
-          top: "100%",
-          left: "50%",
-          transform: "translateX(-50%)",
+          position: "fixed",
+          top: pos.top,
+          right: pos.right,
           paddingTop: 14,
+          zIndex: 200,
           opacity: open ? 1 : 0,
           visibility: open ? "visible" : "hidden",
           transition: "opacity 0.2s ease",
