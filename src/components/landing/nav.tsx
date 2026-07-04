@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { T } from "./shared";
 import { LandingNavCta } from "./landing-nav-cta";
+import { ProductsNavDropdown, ProductsNavMobile } from "./products-nav-dropdown";
 import { MARKETING_NAV } from "@/lib/marketing/routes";
 
 export function Nav() {
@@ -73,17 +74,21 @@ export function Nav() {
           </Link>
 
           <div className="nav-desktop-links">
-            {MARKETING_NAV.map(({ label, href }) => (
-              <Link
-                key={href}
-                href={href}
-                style={linkStyle}
-                onMouseEnter={e => (e.currentTarget.style.color = T.coldW)}
-                onMouseLeave={e => (e.currentTarget.style.color = T.muted)}
-              >
-                {label}
-              </Link>
-            ))}
+            {MARKETING_NAV.map(({ label, href }) =>
+              href === "/products" ? (
+                <ProductsNavDropdown key={href} linkStyle={linkStyle} />
+              ) : (
+                <Link
+                  key={href}
+                  href={href}
+                  style={linkStyle}
+                  onMouseEnter={e => (e.currentTarget.style.color = T.coldW)}
+                  onMouseLeave={e => (e.currentTarget.style.color = T.muted)}
+                >
+                  {label}
+                </Link>
+              ),
+            )}
             <LandingNavCta />
           </div>
 
@@ -183,16 +188,20 @@ export function Nav() {
               style={{ display: "block", mixBlendMode: "screen", width: 140, height: "auto" }}
             />
           </Link>
-          {MARKETING_NAV.map(({ label, href }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={closeMenu}
-              style={{ ...linkStyle, fontSize: 16, padding: "12px 0", color: T.coldW }}
-            >
-              {label}
-            </Link>
-          ))}
+          {MARKETING_NAV.map(({ label, href }) =>
+            href === "/products" ? (
+              <ProductsNavMobile key={href} onNavigate={closeMenu} linkStyle={linkStyle} />
+            ) : (
+              <Link
+                key={href}
+                href={href}
+                onClick={closeMenu}
+                style={{ ...linkStyle, fontSize: 16, padding: "12px 0", color: T.coldW }}
+              >
+                {label}
+              </Link>
+            ),
+          )}
           <div className="nav-wallet-wrap" style={{ marginTop: 16 }}>
             <LandingNavCta />
           </div>
