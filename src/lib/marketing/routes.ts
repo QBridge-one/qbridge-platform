@@ -1,4 +1,5 @@
 export const MARKETING_NAV = [
+  { label: "Products", href: "/products" },
   { label: "Platform", href: "/platform" },
   { label: "Compliance", href: "/compliance" },
   { label: "Use Cases", href: "/use-cases" },
@@ -20,6 +21,7 @@ export const MARKETING_FOOTER = [
  */
 export const MARKETING_SITEMAP_PATHS = [
   "",
+  "/products",
   "/platform",
   "/compliance",
   "/use-cases",

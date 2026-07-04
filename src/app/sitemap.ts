@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { MARKETING_SITEMAP_PATHS } from "@/lib/marketing/routes";
 import { siteUrl } from "@/lib/marketing/site-url";
+import { MARKETING_PRODUCTS } from "@/lib/marketing/products";
 import { INSIGHT_CATEGORIES } from "@/content/insights/categories";
 import { insightPosts } from "@/content/insights/registry";
 
@@ -21,6 +22,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
             : 0.8,
   }));
 
+  const productPages: MetadataRoute.Sitemap = MARKETING_PRODUCTS.map((p) => ({
+    url: `${siteUrl}/products/${p.slug}`,
+    lastModified: now,
+    changeFrequency: "monthly",
+    priority: p.status === "live" ? 0.85 : 0.6,
+  }));
+
   const categoryPages: MetadataRoute.Sitemap = INSIGHT_CATEGORIES.map((c) => ({
     url: `${siteUrl}/insights/category/${c.slug}`,
     lastModified: now,
@@ -37,5 +45,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.75,
   }));
 
-  return [...marketing, ...categoryPages, ...posts];
+  return [...marketing, ...productPages, ...categoryPages, ...posts];
 }
