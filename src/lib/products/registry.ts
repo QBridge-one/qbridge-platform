@@ -69,6 +69,19 @@ export function listEnabledProducts(): ProductDefinition[] {
   return listProducts().filter((p) => p.enabled);
 }
 
+const PRODUCT_KEYS = Object.keys(PRODUCTS) as ProductKey[];
+
+/** Default asset-class entitlement for an issuer org when none is set. */
+export const DEFAULT_ISSUER_PRODUCTS: ProductKey[] = ["real-estate"];
+
+/** Validate an unknown value into a list of known ProductKeys (drops junk). */
+export function parseProductKeys(value: unknown): ProductKey[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (v): v is ProductKey => typeof v === "string" && (PRODUCT_KEYS as string[]).includes(v),
+  );
+}
+
 /**
  * Classify a TokenRegistry token into its product by its on-chain category
  * hash. Returns undefined for categories no product claims (e.g. a future

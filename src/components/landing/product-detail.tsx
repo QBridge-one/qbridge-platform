@@ -7,6 +7,7 @@ import type { MarketingProduct } from "@/lib/marketing/products";
 
 export function ProductDetail({ product }: { product: MarketingProduct }) {
   const live = product.status === "live";
+  const signUpHref = product.productKey ? `/sign-up?product=${product.productKey}` : "/sign-up";
 
   return (
     <main>
@@ -32,7 +33,7 @@ export function ProductDetail({ product }: { product: MarketingProduct }) {
             <div style={dividerStyle} />
             <p style={{ fontSize: 18, lineHeight: 1.7, color: T.coldW, maxWidth: 720, fontWeight: 500 }}>{product.tagline}</p>
             <p style={{ fontSize: 15, lineHeight: 1.75, color: T.muted, maxWidth: 720, marginTop: 16 }}>{product.summary}</p>
-            <CtaRow live={live} />
+            <CtaRow live={live} signUpHref={signUpHref} />
           </FadeIn>
         </div>
       </section>
@@ -109,7 +110,7 @@ export function ProductDetail({ product }: { product: MarketingProduct }) {
                   ? "Start in the issuer workspace, or talk to us about embedding QBridge as infrastructure."
                   : "This product is on the roadmap. Request early access and we'll bring you in as it goes live."}
               </p>
-              <CtaRow live={live} center />
+              <CtaRow live={live} signUpHref={signUpHref} center />
             </div>
           </FadeIn>
         </div>
@@ -118,12 +119,12 @@ export function ProductDetail({ product }: { product: MarketingProduct }) {
   );
 }
 
-function CtaRow({ live, center }: { live: boolean; center?: boolean }) {
+function CtaRow({ live, signUpHref, center }: { live: boolean; signUpHref: string; center?: boolean }) {
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 28, justifyContent: center ? "center" : "flex-start" }}>
       {live ? (
         <>
-          <CtaButton href="/sign-up" primary>Get started</CtaButton>
+          <CtaButton href={signUpHref} primary>Get started</CtaButton>
           <CtaButton href="/contact">Talk to us about infrastructure</CtaButton>
         </>
       ) : (

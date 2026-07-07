@@ -8,6 +8,8 @@
 // sync where a product is "live".
 // ============================================================
 
+import type { ProductKey } from "@/lib/products";
+
 export type ProductStatus = "live" | "coming-soon";
 
 export interface ProductStep {
@@ -27,6 +29,9 @@ export interface MarketingProduct {
   /** Page + card title. */
   name: string;
   status: ProductStatus;
+  /** App-layer product key (live products only) — carried into /sign-up so the
+   *  issuer's workspace is scoped to the product they came in through. */
+  productKey?: ProductKey;
   /** One-line hero subtitle. */
   tagline: string;
   /** Intro paragraph (card + hero). */
@@ -46,6 +51,7 @@ export const MARKETING_PRODUCTS: MarketingProduct[] = [
     tag: "Real Estate",
     name: "Real Estate Tokenization",
     status: "live",
+    productKey: "real-estate",
     tagline: "Tokenize institutional real estate with compliance built into the token.",
     summary:
       "Deploy a compliant SPV token with share classes, a NAV oracle, capital calls, and distributions — accredited-investor and jurisdiction rules enforced on-chain at every transfer.",
@@ -69,6 +75,7 @@ export const MARKETING_PRODUCTS: MarketingProduct[] = [
     tag: "Stablecoins",
     name: "Stablecoin Issuance",
     status: "live",
+    productKey: "stablecoin",
     tagline: "Issue a fiat-backed, proof-of-reserves stablecoin — non-custodial by design.",
     summary:
       "Launch a payment stablecoin where every token is backed by attested reserves and every transfer honors your compliance policy. Attest reserves, mint, and run redemptions from one dashboard.",

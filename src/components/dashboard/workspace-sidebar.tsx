@@ -35,7 +35,7 @@ import { useState } from "react";
 import { can, type Permission } from "@/lib/auth/permissions";
 import { APP_ROLE_LABELS, type AppRole } from "@/lib/core/identity.types";
 import { isNavItemActive } from "@/lib/nav/is-nav-item-active";
-import { getProduct, type ProductKey } from "@/lib/products";
+import { getProduct, DEFAULT_ISSUER_PRODUCTS, type ProductKey } from "@/lib/products";
 
 function workspaceRoleBadge(
   roles: AppRole[] | null,
@@ -89,6 +89,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: FolderOpen,
     section: "assets",
     requires: "workspace:view",
+    product: "real-estate",
   },
   {
     label: "Create Asset",
@@ -96,6 +97,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: PlusCircle,
     section: "assets",
     requires: "workspace:assets:create",
+    product: "real-estate",
   },
   {
     label: "Stablecoins",
@@ -126,6 +128,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: Users,
     section: "tokens",
     requires: "workspace:cap_table:view",
+    product: "real-estate",
   },
   {
     label: "Compliance",
@@ -175,6 +178,8 @@ interface WorkspaceSidebarProps {
   appRoles?: AppRole[] | null;
   /** @deprecated Pass `appRoles` instead. */
   appRole?: AppRole | null;
+  /** Asset-class entitlements for this issuer org — gates product-tagged items. */
+  products?: ProductKey[];
   /** Render inside the mobile nav sheet — always expanded, no collapse control. */
   mobile?: boolean;
   /** Called after a nav link is tapped (closes the mobile sheet). */
@@ -186,6 +191,7 @@ export function WorkspaceSidebar({
   walletAddress,
   appRoles = null,
   appRole = null,
+  products = DEFAULT_ISSUER_PRODUCTS,
   mobile = false,
   onNavigate,
 }: WorkspaceSidebarProps) {
@@ -198,7 +204,11 @@ export function WorkspaceSidebar({
   const primaryRole = effectiveRoles?.[0] ?? null;
 
   const visibleItems = NAV_ITEMS.filter(
-    (i) => (!i.requires || can(effectiveRoles, i.requires)) && (!i.product || getProduct(i.product).enabled),
+    (i) =>
+      (!i.requires || can(effectiveRoles, i.requires)) &&
+      // Product-tagged items show only when the product is globally enabled
+      // AND this issuer org is entitled to it.
+      (!i.product || (getProduct(i.product).enabled && products.includes(i.product))),
   );
 
   const sections = ["main", "assets", "stablecoin", "tokens", "compliance", "settings"];

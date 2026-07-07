@@ -44,6 +44,8 @@ import {
   readAppRolesFromMetadata,
 } from "../identity/clerk.adapter";
 import type { Address } from "../../core/types";
+import type { ProductKey } from "../../products/types";
+import { parseProductKeys, DEFAULT_ISSUER_PRODUCTS } from "../../products";
 
 type ClerkClient = Awaited<ReturnType<typeof clerkClient>>;
 
@@ -116,6 +118,14 @@ function pickIssuerId(meta: unknown): string | null {
   return null;
 }
 
+/** Issuer product entitlements from org metadata; default when unset. Ops → []. */
+function productsFromMetadata(kind: OrgKind, meta: unknown): ProductKey[] {
+  if (kind !== "issuer") return [];
+  const raw = meta && typeof meta === "object" ? (meta as { products?: unknown }).products : undefined;
+  const parsed = parseProductKeys(raw);
+  return parsed.length > 0 ? parsed : DEFAULT_ISSUER_PRODUCTS;
+}
+
 function mapOrg(o: ClerkOrg): AppOrg {
   const kind = mapKindFromMetadata(o.publicMetadata);
   const kyb = kybFieldsFromOrganizationPublicMeta(kind, o.publicMetadata);
@@ -127,6 +137,7 @@ function mapOrg(o: ClerkOrg): AppOrg {
     kind,
     issuerId: pickIssuerId(o.publicMetadata),
     kybStatus: kyb.kybStatus,
+    products: productsFromMetadata(kind, o.publicMetadata),
     kybApplication: kyb.kybApplication,
     kybReview: kyb.kybReview,
     kybCase: kybCaseFromMetadata(o.publicMetadata),
@@ -247,15 +258,22 @@ class ClerkOrganizationAdapter implements OrganizationPort {
     kind: OrgKind;
     issuerId?: string | null;
     creatorUserId: string;
+    products?: ProductKey[];
   }): Promise<AppOrg> {
     const cc = await clerkClient();
+    const seededProducts = parseProductKeys(input.products);
     const o = await cc.organizations.createOrganization({
       name: input.name,
       slug: input.slug,
       createdBy: input.creatorUserId,
       publicMetadata:
         input.kind === "issuer"
-          ? { kind: "issuer", issuerId: input.issuerId ?? null, kybStatus: "none" }
+          ? {
+              kind: "issuer",
+              issuerId: input.issuerId ?? null,
+              kybStatus: "none",
+              products: seededProducts.length > 0 ? seededProducts : DEFAULT_ISSUER_PRODUCTS,
+            }
           : { kind: input.kind, issuerId: input.issuerId ?? null },
     });
     return mapOrg(o);

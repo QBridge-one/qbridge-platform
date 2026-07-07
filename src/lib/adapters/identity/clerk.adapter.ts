@@ -15,6 +15,7 @@ import { chainRegistrationFromMetadata } from "../../core/chain-registration";
 import { isAppRole } from "../../core/identity.types";
 import { unauthenticated } from "../../core/errors";
 import { walletBindingAdapter } from "../wallet-binding";
+import { parseProductKeys, DEFAULT_ISSUER_PRODUCTS } from "../../products";
 
 /** Read kind from a Clerk org's publicMetadata. Default: "issuer". */
 function mapKindFromMetadata(meta: unknown): "ops" | "issuer" {
@@ -112,6 +113,12 @@ class ClerkIdentityAdapter implements IdentityPort {
         kind,
         issuerId: pickIssuerId(o.publicMetadata),
         kybStatus: kyb.kybStatus,
+        products:
+          kind === "issuer"
+            ? (parseProductKeys((o.publicMetadata as { products?: unknown })?.products).length > 0
+                ? parseProductKeys((o.publicMetadata as { products?: unknown })?.products)
+                : DEFAULT_ISSUER_PRODUCTS)
+            : [],
         kybApplication: kyb.kybApplication,
         kybReview: kyb.kybReview,
         kybCase: kybCaseFromMetadata(o.publicMetadata),

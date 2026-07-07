@@ -36,6 +36,7 @@ export default async function WorkspaceLayout({
       walletAddress="0xC3D4533949D52ee67447c87F40c8b98092FD1dF1"
       issuerName={session.activeOrg.name ?? "Issuer Workspace"}
       appRoles={session.appRoles}
+      products={session.activeOrg.products}
       linkedAddress={session.user.primaryWallet}
     >
       {children}

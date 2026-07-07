@@ -15,6 +15,8 @@ import type {
   OrgMember,
 } from "../../core/identity.types";
 import type { IssuerKybDecisionInput, IssuerKybSubmitBody } from "../../core/issuer-kyb";
+import type { ProductKey } from "../../products/types";
+import { DEFAULT_ISSUER_PRODUCTS } from "../../products";
 
 let _id = 0;
 const nextId = (prefix: string) => `${prefix}_${Date.now().toString(36)}_${(_id++).toString(36)}`;
@@ -48,6 +50,7 @@ class MemoryOrganizationStore {
     kind: OrgKind;
     issuerId?: string | null;
     creatorUserId: string;
+    products?: ProductKey[];
   }): AppOrg {
     const id = nextId("org");
     const org: AppOrg = {
@@ -58,6 +61,10 @@ class MemoryOrganizationStore {
       kind: input.kind,
       issuerId: input.issuerId ?? null,
       kybStatus: input.kind === "issuer" ? "approved" : null,
+      products:
+        input.kind === "issuer"
+          ? (input.products && input.products.length > 0 ? input.products : DEFAULT_ISSUER_PRODUCTS)
+          : [],
       kybApplication: null,
       kybReview: null,
       kybCase: null,

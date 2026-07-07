@@ -13,6 +13,7 @@ import type {
 } from "./issuer-kyb";
 import type { KybCase } from "./kyb-verification";
 import type { ChainRegistration } from "./chain-registration";
+import type { ProductKey } from "@/lib/products/types";
 
 // ─── Plane ───────────────────────────────────────────────────
 // Two distinct planes of access in QBridge.
@@ -102,6 +103,10 @@ export interface AppOrg {
   issuerId: string | null;
   /** Issuer org only: KYB onboarding state sourced from Clerk org publicMetadata.kybStatus. Null for ops workspaces. */
   kybStatus: IssuerKybStatus | null;
+  /** Issuer org only: asset-class entitlements (which products this issuer may
+   *  use). Sourced from Clerk publicMetadata.products; defaults to
+   *  DEFAULT_ISSUER_PRODUCTS (["real-estate"]) when unset. `[]` for ops. */
+  products: ProductKey[];
   /** Snapshot of last submission (issuer org); null until first submit or if cleared. */
   kybApplication: IssuerKybApplication | null;
   /** Latest decision metadata (approved/rejected, reviewer, reason). Null

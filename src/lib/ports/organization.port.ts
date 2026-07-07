@@ -14,6 +14,7 @@ import type {
   OrgMember,
 } from "../core/identity.types";
 import type { IssuerKybDecisionInput, IssuerKybSubmitBody } from "../core/issuer-kyb";
+import type { ProductKey } from "../products/types";
 
 export interface OrganizationPort {
   // ── Read ─────────────────────────────────────────────────
@@ -34,6 +35,8 @@ export interface OrganizationPort {
     kind: OrgKind;
     issuerId?: string | null;
     creatorUserId: string;
+    /** Issuer asset-class entitlements to seed (defaults applied if omitted). */
+    products?: ProductKey[];
   }): Promise<AppOrg>;
 
   // ── Invitations ──────────────────────────────────────────

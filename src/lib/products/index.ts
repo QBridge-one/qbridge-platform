@@ -8,4 +8,6 @@ export {
   listProducts,
   listEnabledProducts,
   productByCategoryHash,
+  parseProductKeys,
+  DEFAULT_ISSUER_PRODUCTS,
 } from "./registry";
