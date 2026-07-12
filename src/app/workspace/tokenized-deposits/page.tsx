@@ -16,6 +16,7 @@
 // ============================================================
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,6 +37,7 @@ import {
   Inbox,
   ExternalLink,
   Copy,
+  PlusCircle,
 } from "lucide-react";
 import { useWallet } from "@/lib/hooks/useWallet";
 import { useContracts } from "@/lib/hooks/useContracts";
@@ -92,10 +94,18 @@ export default function TokenizedDepositsPage() {
           </div>
           <p className="max-w-2xl text-sm text-muted-foreground">{DEPOSIT.tagline}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={refetch} disabled={isLoading}>
-          <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={refetch} disabled={isLoading}>
+            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+          <Button size="sm" asChild>
+            <Link href="/workspace/tokenized-deposits/new">
+              <PlusCircle className="mr-1.5 h-4 w-4" />
+              New deposit token
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* The model — how a deposit token differs from a stablecoin */}
@@ -206,14 +216,19 @@ function DepositRow({ row, chainId }: { row: IssuerTokenRow; chainId: number }) 
         </div>
       </TableCell>
       <TableCell className="text-right">
-        {explorer && (
+        <div className="flex items-center justify-end gap-1">
           <Button variant="ghost" size="sm" asChild>
-            <a href={explorer} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-3.5 w-3.5" />
-              <span className="sr-only">View on explorer</span>
-            </a>
+            <Link href={`/workspace/tokenized-deposits/${row.token}`}>View</Link>
           </Button>
-        )}
+          {explorer && (
+            <Button variant="ghost" size="sm" asChild>
+              <a href={explorer} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-3.5 w-3.5" />
+                <span className="sr-only">View on explorer</span>
+              </a>
+            </Button>
+          )}
+        </div>
       </TableCell>
     </TableRow>
   );

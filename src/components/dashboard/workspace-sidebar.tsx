@@ -125,6 +125,14 @@ const NAV_ITEMS: NavItem[] = [
     product: "tokenized-deposit",
   },
   {
+    label: "Issue Deposit",
+    href: `${BASE}/tokenized-deposits/new`,
+    icon: PlusCircle,
+    section: "deposit",
+    requires: "workspace:assets:create",
+    product: "tokenized-deposit",
+  },
+  {
     label: "Token Lifecycle",
     href: `${BASE}/tokens`,
     icon: Coins,
