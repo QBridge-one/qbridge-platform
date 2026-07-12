@@ -96,6 +96,30 @@ export const MARKETING_PRODUCTS: MarketingProduct[] = [
       "A fiat payment stablecoin is e-money / money transmission (US GENIUS Act + state MTLs; EU MiCA EMI). Licensing is a prerequisite — QBridge provides the rails, not the license.",
   },
   {
+    slug: "tokenized-deposits",
+    tag: "Tokenized Deposits",
+    name: "Tokenized Deposit Issuance",
+    status: "live",
+    productKey: "tokenized-deposit",
+    tagline: "Issue bank money on-chain — permissioned, core-ledger settled, on the balance sheet.",
+    summary:
+      "Represent a bank's own deposit liability as a permissioned on-chain token, so institutional clients move on-us bank money 24/7 with same-second finality. It changes the rail, not the money: the token stays a deposit on the balance sheet, reconciled 1:1 to core banking — the institutional counterpart to a reserve-backed stablecoin.",
+    workspacePath: "/workspace/tokenized-deposits",
+    highlights: [
+      { title: "Bank-issued liability", body: "The token is the bank's own deposit — a senior liability on its balance sheet, not a reserve-backed bearer instrument. The issuer of record is a chartered bank." },
+      { title: "Permissioned transfer", body: "ERC-1400-style controlled transfer — only KYB-verified, sanctions-screened, jurisdiction-cleared holders can receive. No bearer, no anonymous transfer." },
+      { title: "Core-ledger settlement", body: "Mint and redeem bind atomically to a posting on the core deposit ledger — a two-phase commit across the two ledgers, reconciled 1:1 so supply never diverges." },
+      { title: "Shared platform spine", body: "Reuses the same identity, custody, registry, and on-chain AccessManager as every other asset class — one platform, a new product declaration." },
+    ],
+    lifecycle: [
+      { step: "Define the token", body: "Configure the deposit token — currency, decimals, permissioned transfer policy, and the core-ledger control account." },
+      { step: "Permission holders", body: "Allowlist KYB-verified, jurisdiction-cleared holders in the identity registry; sanctioned addresses are blocked." },
+      { step: "Issue & settle", body: "Mint and redeem against the core ledger, atomically reconciled 1:1 with same-second on-chain finality." },
+    ],
+    compliance:
+      "A tokenized deposit stays a bank deposit for capital, liquidity, and insurance purposes (OSFI / CDIC in Canada), with full AML and sanctions controls (FINTRAC, SEMA). QBridge provides the rails; the banking license and core-ledger integration sit with the issuer.",
+  },
+  {
     slug: "private-markets",
     tag: "Private Equity & VC",
     name: "Private Markets & Fund Interests",
@@ -154,26 +178,6 @@ export const MARKETING_PRODUCTS: MarketingProduct[] = [
       { step: "Redeem", body: "Settle against the underlying per your terms." },
     ],
     compliance: "Structured as compliant asset-backed security tokens with reserve attestation.",
-  },
-  {
-    slug: "banking-treasury",
-    tag: "Banking & Treasury",
-    name: "Tokenized Deposits & Funds",
-    status: "coming-soon",
-    tagline: "Tokenized deposits, money market funds, and treasury instruments.",
-    summary:
-      "Enable banks and financial institutions to issue tokenized deposits and treasury instruments — with on-chain settlement, programmable controls, and the audit and compliance rails regulators expect.",
-    highlights: [
-      { title: "On-chain settlement", body: "Instant, final settlement for deposits and fund units." },
-      { title: "Programmable controls", body: "Institutional transfer and eligibility rules." },
-      { title: "Regulator-grade audit", body: "Full audit and compliance rails built in." },
-    ],
-    lifecycle: [
-      { step: "Issue", body: "Tokenize deposits or fund units." },
-      { step: "Settle", body: "Move value with on-chain finality." },
-      { step: "Report", body: "Produce regulator-grade audit trails." },
-    ],
-    compliance: "Built for regulated banking and fund structures.",
   },
   {
     slug: "emerging",
