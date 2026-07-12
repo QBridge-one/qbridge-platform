@@ -17,7 +17,7 @@
 
 import type { Hex } from "@/lib/core/types";
 
-export type ProductKey = "real-estate" | "stablecoin";
+export type ProductKey = "real-estate" | "stablecoin" | "tokenized-deposit";
 
 export interface ProductDefinition {
   /** Stable identifier used in routes, config and the address registry. */
@@ -44,7 +44,7 @@ export interface ProductDefinition {
 
   // ─── Wiring ────────────────────────────────────────────────
   /** Address-registry key for this product's factory (see lib/contracts/registry.ts). */
-  factoryAddressKey: "realEstateFactory" | "stablecoinFactory";
+  factoryAddressKey: "realEstateFactory" | "stablecoinFactory" | "tokenizedDepositFactory";
   /** Base path for this product's workspace surface. */
   workspaceBasePath: string;
 }

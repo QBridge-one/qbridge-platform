@@ -22,6 +22,11 @@ import type { ProductDefinition, ProductKey } from "./types";
 const STABLECOIN_ENABLED =
   (process.env.NEXT_PUBLIC_PRODUCT_STABLECOIN ?? "false").toLowerCase() === "true";
 
+// Tokenized deposit ships dark by default — flip
+// NEXT_PUBLIC_PRODUCT_TOKENIZED_DEPOSIT=true to surface it.
+const TOKENIZED_DEPOSIT_ENABLED =
+  (process.env.NEXT_PUBLIC_PRODUCT_TOKENIZED_DEPOSIT ?? "false").toLowerCase() === "true";
+
 export const PRODUCTS: Record<ProductKey, ProductDefinition> = {
   "real-estate": {
     key: "real-estate",
@@ -51,6 +56,35 @@ export const PRODUCTS: Record<ProductKey, ProductDefinition> = {
     categoryHash: toBytes32Label("STABLECOIN"),
     factoryAddressKey: "stablecoinFactory",
     workspaceBasePath: "/workspace/stablecoins",
+  },
+  // Tokenized deposit — commercial bank money on-chain. Same shared spine
+  // (IssuerRegistry, TokenRegistry, AccessManager, identity, custody) as every
+  // other product; the difference from a stablecoin is POLICY, not plumbing:
+  // the issuer is a chartered bank, transfers default to an allowlist
+  // (permissioned — verified holders only), and mint/redeem settle 1:1 against
+  // the bank's core ledger (DvP) rather than a reserve pool.
+  //
+  // Ships DARK. Remaining wiring to launch a live cluster (mirrors stablecoin):
+  //   1. ABIs under src/contracts/tokenized-deposit-* → `yarn generate`.
+  //   2. `tokenizedDepositFactory` address per chain in lib/contracts/registry.ts
+  //      (the ChainContracts index signature already resolves the key).
+  //   3. A settlement adapter behind a port for core-ledger reconciliation.
+  //   4. Workspace surface under workspaceBasePath.
+  "tokenized-deposit": {
+    key: "tokenized-deposit",
+    label: "Tokenized Deposit",
+    shortLabel: "Deposits",
+    tagline: "Bank-issued deposit token — permissioned transfer, core-ledger settled.",
+    description:
+      "Commercial bank money represented on-chain: a deposit liability on the bank's balance " +
+      "sheet, issued by a chartered bank. Transfers are permissioned (allowlist of verified " +
+      "holders), and issuance/redemption settle 1:1 against core banking via a DvP adapter. " +
+      "The institutional counterpart to a reserve-backed stablecoin.",
+    enabled: TOKENIZED_DEPOSIT_ENABLED,
+    category: "TOKENIZED_DEPOSIT",
+    categoryHash: toBytes32Label("TOKENIZED_DEPOSIT"),
+    factoryAddressKey: "tokenizedDepositFactory",
+    workspaceBasePath: "/workspace/tokenized-deposits",
   },
 };
 
