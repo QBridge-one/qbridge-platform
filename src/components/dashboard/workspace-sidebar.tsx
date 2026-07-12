@@ -15,6 +15,7 @@ import {
   Users,
   ShieldCheck,
   Coins,
+  Landmark,
   FileText,
   Settings,
   ChevronLeft,
@@ -116,6 +117,14 @@ const NAV_ITEMS: NavItem[] = [
     product: "stablecoin",
   },
   {
+    label: "Tokenized Deposits",
+    href: `${BASE}/tokenized-deposits`,
+    icon: Landmark,
+    section: "deposit",
+    requires: "workspace:view",
+    product: "tokenized-deposit",
+  },
+  {
     label: "Token Lifecycle",
     href: `${BASE}/tokens`,
     icon: Coins,
@@ -166,6 +175,7 @@ const SECTION_LABELS: Record<string, string> = {
   main: "Overview",
   assets: "Assets",
   stablecoin: "Stablecoins",
+  deposit: "Tokenized Deposits",
   tokens: "Token Ops",
   compliance: "Compliance",
   settings: "Settings",
@@ -211,7 +221,7 @@ export function WorkspaceSidebar({
       (!i.product || (getProduct(i.product).enabled && products.includes(i.product))),
   );
 
-  const sections = ["main", "assets", "stablecoin", "tokens", "compliance", "settings"];
+  const sections = ["main", "assets", "stablecoin", "deposit", "tokens", "compliance", "settings"];
   const groupedItems = sections.reduce<Record<string, NavItem[]>>(
     (acc, section) => {
       const items = visibleItems.filter((i) => i.section === section);
