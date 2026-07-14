@@ -1,8 +1,5 @@
 export const MARKETING_NAV = [
   { label: "Products", href: "/products" },
-  { label: "Platform", href: "/platform" },
-  { label: "Compliance", href: "/compliance" },
-  { label: "Use Cases", href: "/use-cases" },
   { label: "Insights", href: "/insights" },
   { label: "About", href: "/about" },
 ] as const;
