@@ -93,6 +93,7 @@ function PrimaryLink({ href, children }: { href: string; children: React.ReactNo
 function SignedOutCta() {
   return (
     <div className="nav-wallet-buttons" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <GhostLink href="/portal">Client Portal</GhostLink>
       <GhostLink href="/sign-in">Sign in</GhostLink>
       <PrimaryLink href="/sign-up">Get Started</PrimaryLink>
     </div>
@@ -120,6 +121,7 @@ function SignedInCta() {
       >
         {initials}
       </span>
+      <GhostLink href="/portal">Client Portal</GhostLink>
       <PrimaryLink href="/select-workspace">Workspace</PrimaryLink>
       <button
         type="button"
