@@ -24,7 +24,7 @@ export default async function SignUpPage({
       <SignUp
         appearance={{ elements: { rootBox: "shadow-none", card: "shadow-md" } }}
         signInUrl="/sign-in"
-        forceRedirectUrl="/select-workspace"
+        fallbackRedirectUrl="/select-workspace"
       />
     </main>
   );

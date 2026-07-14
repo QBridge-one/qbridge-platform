@@ -10,7 +10,7 @@ export default function SignInPage() {
       <SignIn
         appearance={{ elements: { rootBox: "shadow-none", card: "shadow-md" } }}
         signUpUrl="/sign-up"
-        forceRedirectUrl="/select-workspace"
+        fallbackRedirectUrl="/select-workspace"
       />
     </main>
   );
