@@ -17,6 +17,7 @@
 // Clerk-hosted pages and will themselves render the placeholder).
 // ============================================================
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { T } from "./shared";
@@ -153,9 +154,14 @@ function ClerkAwareCta() {
 }
 
 export function LandingNavCta() {
-  // Memory-mode dev: Clerk isn't mounted, so the Clerk hooks would throw.
-  // Render plain links — /sign-in will display Clerk's hosted UI when
-  // they're added later, or the placeholder until then.
-  if (!HAS_CLERK_KEY) return <SignedOutCta />;
+  // The marketing pages are statically prerendered, where there is no request
+  // and thus no Clerk context — calling Clerk hooks there throws
+  // "useAuth ... within <ClerkProvider>". So gate the auth-aware variant behind
+  // a client mount: prerender (and memory-mode dev) render the signed-out CTA,
+  // and the real signed-in state hydrates on the client. Keeps the pages static.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!HAS_CLERK_KEY || !mounted) return <SignedOutCta />;
   return <ClerkAwareCta />;
 }
