@@ -28,7 +28,26 @@ import { WalletAutoDisconnect } from "@/components/providers/wallet-auto-disconn
 
 const queryClient = new QueryClient();
 
+// Clerk's <ClerkProvider> is mounted only when this key is present (see
+// identity-provider.tsx). useAuth() MUST be gated on the same condition — calling
+// it without a surrounding <ClerkProvider> throws "useAuth ... within
+// <ClerkProvider>" and fails static prerendering (e.g. a build with no key set).
+const HAS_CLERK_KEY = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
 export function PrivyProviders({ children }: { children: React.ReactNode }) {
+  if (!isPrivyConfigured) {
+    return <>{children}</>;
+  }
+  // Only read the Clerk token when ClerkProvider is actually in the tree.
+  return HAS_CLERK_KEY ? (
+    <PrivyWithClerkAuth>{children}</PrivyWithClerkAuth>
+  ) : (
+    <PrivyTree config={basePrivyConfig}>{children}</PrivyTree>
+  );
+}
+
+/** Wires the Clerk session token into Privy's customAuth. */
+function PrivyWithClerkAuth({ children }: { children: React.ReactNode }) {
   // Clerk owns identity. Privy reads the Clerk session token through this
   // callback; Privy auto-syncs its auth state to Clerk's. getToken() is
   // null when signed out → map to undefined for Privy's contract.
@@ -45,10 +64,17 @@ export function PrivyProviders({ children }: { children: React.ReactNode }) {
     [getToken, isLoaded],
   );
 
-  if (!isPrivyConfigured) {
-    return <>{children}</>;
-  }
+  return <PrivyTree config={config}>{children}</PrivyTree>;
+}
 
+/** The Privy → QueryClient → Wagmi provider stack (nesting mandated by @privy-io/wagmi). */
+function PrivyTree({
+  config,
+  children,
+}: {
+  config: React.ComponentProps<typeof PrivyProvider>["config"];
+  children: React.ReactNode;
+}) {
   return (
     <PrivyProvider appId={privyAppId} config={config}>
       <QueryClientProvider client={queryClient}>
