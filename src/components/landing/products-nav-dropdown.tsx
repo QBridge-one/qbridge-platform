@@ -3,7 +3,6 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import { T } from "./shared";
-import { StatusBadge } from "./products-grid";
 import { MARKETING_PRODUCTS } from "@/lib/marketing/products";
 
 // ─── Desktop: hover dropdown ──────────────────────────────────
@@ -72,7 +71,6 @@ export function ProductsNavDropdown({ linkStyle }: { linkStyle: React.CSSPropert
               style={{
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "space-between",
                 gap: 12,
                 padding: "10px 12px",
                 textDecoration: "none",
@@ -83,7 +81,6 @@ export function ProductsNavDropdown({ linkStyle }: { linkStyle: React.CSSPropert
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
               <span style={{ color: T.coldW, fontSize: 13, fontWeight: 600 }}>{p.tag}</span>
-              <StatusBadge live={p.status === "live"} />
             </Link>
           ))}
           <div style={{ borderTop: `1px solid ${T.border}`, marginTop: 6, paddingTop: 6 }}>
@@ -145,7 +142,6 @@ export function ProductsNavMobile({
             style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", textDecoration: "none", color: T.muted, fontSize: 14 }}
           >
             {p.tag}
-            <StatusBadge live={p.status === "live"} />
           </Link>
         ))}
       </div>

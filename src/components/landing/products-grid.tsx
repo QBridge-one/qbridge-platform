@@ -50,7 +50,6 @@ export function ProductsGrid() {
                     }}>
                       {p.tag}
                     </span>
-                    <StatusBadge live={live} />
                   </div>
                   <h3 style={{ fontSize: 18, fontWeight: 700, color: T.coldW, marginBottom: 12, fontFamily: "'Playfair Display', serif" }}>
                     {p.name}
@@ -66,24 +65,5 @@ export function ProductsGrid() {
         </div>
       </div>
     </section>
-  );
-}
-
-export function StatusBadge({ live }: { live: boolean }) {
-  return (
-    <span style={{
-      fontSize: 9,
-      fontWeight: 700,
-      letterSpacing: "0.14em",
-      textTransform: "uppercase",
-      fontFamily: "'DM Mono', monospace",
-      padding: "3px 8px",
-      borderRadius: 2,
-      color: live ? "#7BE8A8" : T.warm,
-      border: `1px solid ${live ? "rgba(123,232,168,0.4)" : "rgba(232,184,76,0.4)"}`,
-      background: live ? "rgba(123,232,168,0.08)" : "rgba(232,184,76,0.08)",
-    }}>
-      {live ? "Live" : "Coming soon"}
-    </span>
   );
 }

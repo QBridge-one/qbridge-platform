@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { T, sectionBase, containerStyle, labelStyle, h2Style, dividerStyle, GridTexture, FadeIn } from "./shared";
-import { StatusBadge } from "./products-grid";
 import type { MarketingProduct } from "@/lib/marketing/products";
 
 export function ProductDetail({ product }: { product: MarketingProduct }) {
@@ -27,7 +26,6 @@ export function ProductDetail({ product }: { product: MarketingProduct }) {
             </Link>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 20 }}>
               <span style={labelStyle}>{product.tag}</span>
-              <StatusBadge live={live} />
             </div>
             <h1 style={{ ...h2Style, marginTop: 12, fontSize: "clamp(28px, 5vw, 44px)" }}>{product.name}</h1>
             <div style={dividerStyle} />

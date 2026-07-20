@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { T, sectionBase, containerStyle, labelStyle, h2Style, dividerStyle, GridTexture, FadeIn } from "./shared";
-import { StatusBadge } from "./products-grid";
 
 const cases = [
   {
@@ -95,7 +94,6 @@ export function UseCases() {
                   }}>
                     {c.tag}
                   </span>
-                  <StatusBadge live={c.status === "live"} />
                 </div>
                 <h3 style={{ fontSize: 17, fontWeight: 700, color: T.coldW, marginBottom: 14, fontFamily: "'Playfair Display', serif" }}>
                   {c.title}
