@@ -26,6 +26,11 @@ export default async function WorkspaceLayout({
   if (!session) redirect("/sign-in");
   if (!session.activeOrg) redirect("/select-workspace");
   if (session.activeOrg.kind !== "issuer") redirect("/select-workspace");
+  // Asset class precedes KYB: an issuer with no product entitlement must
+  // explicitly choose one first (replaces the old silent real-estate default).
+  if (session.activeOrg.products.length === 0) {
+    redirect("/onboarding/asset-class");
+  }
   if (issuerWorkspaceKybBlocks(session.activeOrg.kind, session.activeOrg.kybStatus)) {
     redirect("/onboarding/kyb");
   }

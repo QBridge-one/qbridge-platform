@@ -17,6 +17,11 @@ import { toBytes32Label } from "@/lib/contracts/factory-payload";
 import { DEAL_CATEGORY } from "@/types/deal";
 import type { ProductDefinition, ProductKey } from "./types";
 
+// Real estate is flag-gated like every other asset class (no longer a special
+// always-on default). Set NEXT_PUBLIC_PRODUCT_REAL_ESTATE=true to enable it.
+const REAL_ESTATE_ENABLED =
+  (process.env.NEXT_PUBLIC_PRODUCT_REAL_ESTATE ?? "false").toLowerCase() === "true";
+
 // Stablecoin ships dark by default — flip NEXT_PUBLIC_PRODUCT_STABLECOIN=true
 // to surface it in nav / enable its workspace.
 const STABLECOIN_ENABLED =
@@ -36,7 +41,7 @@ export const PRODUCTS: Record<ProductKey, ProductDefinition> = {
     description:
       "Issuers tokenize real-estate SPVs: NAV oracle, distributions, capital calls and " +
       "Reg-D-style compliance (accreditation, hold periods, share classes).",
-    enabled: true,
+    enabled: REAL_ESTATE_ENABLED,
     category: DEAL_CATEGORY, // "REAL_ESTATE"
     categoryHash: toBytes32Label(DEAL_CATEGORY),
     factoryAddressKey: "realEstateFactory",
@@ -105,8 +110,12 @@ export function listEnabledProducts(): ProductDefinition[] {
 
 const PRODUCT_KEYS = Object.keys(PRODUCTS) as ProductKey[];
 
-/** Default asset-class entitlement for an issuer org when none is set. */
-export const DEFAULT_ISSUER_PRODUCTS: ProductKey[] = ["real-estate"];
+/**
+ * Default asset-class entitlement for an issuer org when none is set.
+ * Empty by design: an issuer explicitly chooses an asset class in onboarding
+ * (see /onboarding/asset-class). No product is ever assigned silently.
+ */
+export const DEFAULT_ISSUER_PRODUCTS: ProductKey[] = [];
 
 /** Validate an unknown value into a list of known ProductKeys (drops junk). */
 export function parseProductKeys(value: unknown): ProductKey[] {
