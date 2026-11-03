@@ -24,11 +24,12 @@ import { forbidden } from "@/lib/core/errors";
 import { normalizeJurisdictionToCode } from "@/lib/data/countries";
 import { processKybEvent } from "@/lib/services/kyb-webhook.service";
 
-/** When KYB_SKIP_VERIFICATION=true, mark identity verification approved
- *  without Sumsub/Persona. Off unless that env var is set. */
+/** Temporary demo bypass. Start verification marks identity approved
+ *  without Sumsub/Persona, including on the live site. Set
+ *  KYB_SKIP_VERIFICATION=false to turn it off. */
 function kybSkipEnabled(): boolean {
   const raw = process.env.KYB_SKIP_VERIFICATION?.trim().toLowerCase();
-  return raw === "1" || raw === "true" || raw === "yes";
+  return raw !== "0" && raw !== "false" && raw !== "no";
 }
 
 export async function POST() {
