@@ -22,15 +22,6 @@ import { errorResponse } from "@/lib/auth/api";
 import { requireOrg } from "@/lib/auth/server";
 import { forbidden } from "@/lib/core/errors";
 import { normalizeJurisdictionToCode } from "@/lib/data/countries";
-import { processKybEvent } from "@/lib/services/kyb-webhook.service";
-
-/** Temporary demo bypass. Start verification marks identity approved
- *  without Sumsub/Persona, including on the live site. Set
- *  KYB_SKIP_VERIFICATION=false to turn it off. */
-function kybSkipEnabled(): boolean {
-  const raw = process.env.KYB_SKIP_VERIFICATION?.trim().toLowerCase();
-  return raw !== "0" && raw !== "false" && raw !== "no";
-}
 
 export async function POST() {
   try {
@@ -46,26 +37,6 @@ export async function POST() {
         alreadyComplete: true,
         provider: org.kybCase.provider,
         caseId: org.kybCase.caseId,
-      });
-    }
-
-    if (kybSkipEnabled()) {
-      const caseId = `dev-bypass-${org.id}`;
-      await processKybEvent(
-        {
-          caseId,
-          orgId: org.id,
-          status: "approved",
-          providerEvent: "dev_bypass",
-          raw: { bypass: true },
-        },
-        "manual",
-      );
-      return NextResponse.json({
-        alreadyComplete: true,
-        bypassed: true,
-        provider: "manual",
-        caseId,
       });
     }
 
