@@ -30,10 +30,10 @@ const TERMINAL_STATUSES: ReadonlySet<KybCaseStatus> = new Set([
   "failed",
 ]);
 
-function reviewUrlFor(provider: VerificationProvider, caseId: string): string {
-  return provider === "persona"
-    ? `https://app.withpersona.com/inquiries/${caseId}`
-    : `https://cockpit.sumsub.com/checkus/#/applicant/${caseId}`;
+function reviewUrlFor(provider: VerificationProvider, caseId: string): string | null {
+  if (provider === "persona") return `https://app.withpersona.com/inquiries/${caseId}`;
+  if (provider === "sumsub") return `https://cockpit.sumsub.com/checkus/#/applicant/${caseId}`;
+  return null;
 }
 
 function resumeUrlFor(
